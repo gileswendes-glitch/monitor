@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # 1. Local Database (Runs on the server)
+  mongo:
+    image: mongo:latest
+    container_name: khs-mongo
+    restart: always
+    volumes:
+      - ./data:/data/db
+    ports:
+      - "27017:27017"
+
+  # 2. Local Dashboard (Office Screen)
+  server:
+    build: .
+    container_name: khs-server
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/admin_monitor
+      - CLOUD_MODE=false # This is the LOCAL server
+    depends_on:
+      - mongo
+
+  # 3. Local Agent (The Worker)
+  agent:
+    build: .
+    container_name: khs-agent
+    restart: always
+    command: ["node", "agent.js"]
+    environment:
+      - LOCAL_API_URL=http://172.16.64.105:3000/api
+      # REPLACE <db_password> below with your actual password!
+      # This tells the agent where your Cloud App lives (we will deploy this next)
+      - CLOUD_API_URL=https://khs-v4w8.onrender.com/api 
+    depends_on:
+      - server

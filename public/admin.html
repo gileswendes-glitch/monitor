@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IT Admin - System Manager</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        /* --- LAYOUT --- */
+        body { margin: 0; display: flex; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; background: #f4f4f4; }
+        #map { width: 65%; background: #e5e5e5; border-right: 1px solid #ccc; }
+        #sidebar { 
+            width: 35%; 
+            padding: 20px; 
+            background: #fff; 
+            display: flex; 
+            flex-direction: column; 
+            overflow-y: auto; 
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+        }
+        
+        /* --- TYPOGRAPHY --- */
+        h2 { margin-top: 0; color: #222; font-size: 20px; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; }
+        h3 { margin: 15px 0 5px 0; font-size: 16px; color: #444; border-top: 1px solid #eee; padding-top: 15px; }
+        h3:first-of-type { border-top: none; padding-top: 0; }
+        p.desc { font-size: 13px; color: #777; margin-top: 0; margin-bottom: 10px; }
+        
+        /* --- FORMS --- */
+        .control-group { background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 15px; }
+        input, select { width: 100%; margin-bottom: 10px; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+        label { font-size: 12px; font-weight: bold; color: #555; display: block; margin-bottom: 3px; }
+        
+        /* --- TABLES --- */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        .data-table th { text-align: left; border-bottom: 2px solid #ddd; padding: 5px; color: #555; }
+        .data-table td { padding: 8px 5px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .data-table tr:hover { background: #f1f1f1; }
+        
+        /* --- BUTTONS --- */
+        button { padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; border: none; font-size: 12px; }
+        .btn-add { background: #007bff; color: white; width: 100%; margin-top: 5px; }
+        .btn-save { background: #28a745; color: white; }
+        .btn-cancel { background: #6c757d; color: white; }
+        .btn-del { background: transparent; color: #dc3545; font-size: 16px; padding: 0 5px; }
+        .btn-del:hover { background: #fee; }
+        .hidden { display: none !important; }
+
+        /* --- CUSTOM MODAL --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 3000;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .modal-box {
+            background: white; width: 400px; padding: 25px;
+            border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #333; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .modal-actions button { flex: 1; font-size: 14px; padding: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div id="sidebar">
+        <h2>System Manager</h2>
+
+        <div class="control-group">
+            <h3>📍 Map Devices</h3>
+            <p class="desc">Place switches and APs on floor plans.</p>
+            <select id="mapSelector" onchange="changeMap()">
+                <optgroup label="Location T">
+                    <option value="T-G.PNG">T Block - Ground</option>
+                    <option value="T-1.PNG">T Block - 1st Floor</option>
+                    <option value="T-M.PNG">T Block - Mezzanine</option>
+                </optgroup>
+                <optgroup label="Location K">
+                    <option value="K-G.PNG">K Block - Ground</option>
+                    <option value="K-1.PNG">K Block - 1st Floor</option>
+                    <option value="K-2.PNG">K Block - 2nd Floor</option>
+                </optgroup>
+            </select>
+            <div id="mapForm" class="hidden" style="margin-top:10px; border-top:1px solid #ddd; padding-top:10px;">
+                <label>Device Name</label> <input type="text" id="m_name">
+                <label>IP Address</label> <input type="text" id="m_ip">
+                <input type="hidden" id="m_id"> <input type="hidden" id="m_x"><input type="hidden" id="m_y">
+                <div style="display:flex; gap:5px;">
+                    <button class="btn-save" style="flex:1" onclick="saveMapDevice()">Save</button>
+                    <button class="btn-cancel" onclick="resetMapForm()">Cancel</button>
+                    <button class="btn-del" onclick="deleteMapDevice()">🗑️</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>🔥 Firewall / Safeguarding</h3>
+            <p class="desc">SNMP Monitored Devices.</p>
+            <button class="btn-add" onclick="openAddModal('firewall', 'Add Firewall Device', 'IP Address')">+ Add Device</button>
+            <div style="max-height: 150px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead><tr><th>Name</th><th>IP / Host</th><th></th></tr></thead>
+                    <tbody id="firewall-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>☁️ Cloud Services</h3>
+            <button class="btn-add" onclick="openAddModal('service', 'Add Cloud Service', 'URL')">+ Add Service</button>
+            <div style="max-height: 150px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead><tr><th>Name</th><th>URL</th><th></th></tr></thead>
+                    <tbody id="cloud-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>🖥️ Local Servers</h3>
+            <button class="btn-add" onclick="openAddModal('server', 'Add Local Server', 'Hostname or IP')">+ Add VM/Server</button>
+            <div style="max-height: 200px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead><tr><th>Name</th><th>IP / FQDN</th><th></th></tr></thead>
+                    <tbody id="server-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>⚙️ Physical Hardware</h3>
+            <button class="btn-add" onclick="openAddModal('hardware', 'Add Hardware', 'Hostname or IP')">+ Add Hardware</button>
+            <div style="height: auto;">
+                <table class="data-table">
+                    <thead><tr><th>Name</th><th>IP / FQDN</th><th></th></tr></thead>
+                    <tbody id="hardware-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>📹 NVRs</h3>
+            <button class="btn-add" onclick="openAddModal('nvr', 'Add NVR', 'Hostname or IP')">+ Add NVR</button>
+            <div style="height: auto;">
+                <table class="data-table"><thead><tr><th>Name</th><th>IP / FQDN</th><th></th></tr></thead><tbody id="nvr-list"></tbody></table>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <h3>🔌 Switch Hardware</h3>
+            <button class="btn-add" onclick="openAddModal('switch_hw', 'Add Core/Edge Switch', 'Hostname or IP')">+ Add Switch</button>
+            <div style="max-height: 200px; overflow-y: auto;">
+                <table class="data-table"><thead><tr><th>Name</th><th>IP / FQDN</th><th></th></tr></thead><tbody id="switch-list"></tbody></table>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>🖨️ Printers</h3>
+            <button class="btn-add" onclick="openAddModal('printer', 'Add Printer', 'Hostname or IP')">+ Add Printer</button>
+            <div style="max-height: 200px; overflow-y: auto;">
+                <table class="data-table"><thead><tr><th>Name</th><th>IP / FQDN</th><th></th></tr></thead><tbody id="printer-list"></tbody></table>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="addModal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div id="modalTitle" class="modal-header">Add Device</div>
+            <input type="hidden" id="modalType">
+            <label>Name</label> <input type="text" id="modalName" placeholder="e.g. Server-01">
+            <label id="modalLabel2">Address</label> <input type="text" id="modalAddress" placeholder="...">
+            <div class="modal-actions">
+                <button class="btn-save" onclick="saveFromModal()">Save Device</button>
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const domain = ".kingsbury.sch.uk";
+        const ipRegex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+
+        async function refreshAll() {
+            try {
+                const res = await fetch('/api/devices');
+                const devices = await res.json();
+                
+                renderGeneric(devices.filter(d => d.type === 'service'), 'cloud-list');
+                renderGeneric(devices.filter(d => d.type === 'server'), 'server-list');
+                renderGeneric(devices.filter(d => d.type === 'hardware'), 'hardware-list');
+                renderGeneric(devices.filter(d => d.type === 'nvr'), 'nvr-list');
+                renderGeneric(devices.filter(d => d.type === 'switch_hw'), 'switch-list');
+                renderGeneric(devices.filter(d => d.type === 'firewall'), 'firewall-list'); 
+                renderGeneric(devices.filter(d => d.type === 'printer'), 'printer-list'); 
+                renderMap(devices); 
+            } catch (e) { console.error(e); }
+        }
+
+        // RENDERERS
+        function renderGeneric(list, id) {
+            const tbody = document.getElementById(id);
+            tbody.innerHTML = '';
+            list.sort((a,b) => a.name.localeCompare(b.name));
+            list.forEach(d => {
+                const val2 = d.ip; 
+                tbody.innerHTML += `<tr>
+                    <td><input type="text" value="${d.name}" onchange="updateDevice('${d._id}', this.value, '${d.ip}')"></td>
+                    <td style="color:#666; font-size:0.9em;">${val2}</td>
+                    <td style="text-align:right;"><button class="btn-del" onclick="deleteDevice('${d._id}')">&times;</button></td>
+                </tr>`;
+            });
+        }
+        
+        // --- MODAL LOGIC ---
+        function openAddModal(type, title, addressLabel) {
+            document.getElementById('modalType').value = type;
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalLabel2').innerText = addressLabel;
+            document.getElementById('modalName').value = '';
+            document.getElementById('modalAddress').value = '';
+            document.getElementById('addModal').classList.remove('hidden');
+            document.getElementById('modalName').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('addModal').classList.add('hidden');
+        }
+
+        async function saveFromModal() {
+            const type = document.getElementById('modalType').value;
+            const name = document.getElementById('modalName').value;
+            let address = document.getElementById('modalAddress').value;
+
+            if(!name || !address) { alert("Please fill in both fields"); return; }
+
+            if (type !== 'service' && type !== 'firewall') {
+                if (!ipRegex.test(address)) {
+                    if (!address.includes(domain)) address = address + domain;
+                }
+            }
+
+            await apiCall('/api/add-device', 'POST', { name: name, ip: address, type: type });
+            closeModal();
+            refreshAll();
+        }
+
+        // STANDARD API ACTIONS
+        async function updateDevice(id, name, ip) { await apiCall(`/api/devices/${id}`, 'PUT', { name, ip }); }
+        async function deleteDevice(id) { if(confirm("Sure?")) { await apiCall(`/api/devices/${id}`, 'DELETE'); refreshAll(); } }
+        async function apiCall(url, method, body) { await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
+
+        // MAP LOGIC
+        var map = L.map('map', { crs: L.CRS.Simple, minZoom: -2 });
+        var currentLayer, devicesLayer = L.layerGroup().addTo(map), tempMarker;
+
+        function changeMap() {
+            const file = document.getElementById('mapSelector').value;
+            var img = new Image(); img.src = file;
+            img.onload = function() {
+                if(currentLayer) map.removeLayer(currentLayer);
+                var bounds = [[0, 0], [this.height, this.width]]; 
+                currentLayer = L.imageOverlay(file, bounds).addTo(map);
+                map.fitBounds(bounds);
+                refreshAll();
+            }
+        }
+
+        function renderMap(all) {
+            devicesLayer.clearLayers();
+            const file = document.getElementById('mapSelector').value;
+            all.forEach(d => {
+                if(d.floor_id === file && d.type === 'switch') {
+                    const c = L.circleMarker([d.map_coordinates.y, d.map_coordinates.x], { color: 'blue', radius: 10 }).addTo(devicesLayer);
+                    c.bindTooltip(d.name);
+                    c.on('click', (e) => { L.DomEvent.stopPropagation(e); editMapDevice(d); });
+                }
+            });
+        }
+
+        map.on('click', (e) => {
+            document.getElementById('mapForm').classList.remove('hidden');
+            document.getElementById('m_id').value = '';
+            document.getElementById('m_x').value = e.latlng.lng;
+            document.getElementById('m_y').value = e.latlng.lat;
+            if(tempMarker) map.removeLayer(tempMarker);
+            tempMarker = L.marker(e.latlng).addTo(map);
+            document.getElementById('m_name').focus();
+        });
+
+        function editMapDevice(d) {
+            document.getElementById('mapForm').classList.remove('hidden');
+            document.getElementById('m_id').value = d._id;
+            document.getElementById('m_name').value = d.name;
+            document.getElementById('m_ip').value = d.ip;
+        }
+
+        async function saveMapDevice() {
+            const id = document.getElementById('m_id').value;
+            const payload = {
+                name: document.getElementById('m_name').value,
+                ip: document.getElementById('m_ip').value,
+                type: 'switch',
+                floor_id: document.getElementById('mapSelector').value,
+                map_coordinates: { x: document.getElementById('m_x').value, y: document.getElementById('m_y').value }
+            };
+            await apiCall(id ? `/api/devices/${id}` : '/api/add-device', id ? 'PUT' : 'POST', payload);
+            document.getElementById('mapForm').classList.add('hidden');
+            if(tempMarker) map.removeLayer(tempMarker);
+            refreshAll();
+        }
+
+        async function deleteMapDevice() {
+            const id = document.getElementById('m_id').value;
+            if(id) await deleteDevice(id);
+            document.getElementById('mapForm').classList.add('hidden');
+            if(tempMarker) map.removeLayer(tempMarker);
+        }
+
+        changeMap();
+    </script>
+</body>
+</html>
