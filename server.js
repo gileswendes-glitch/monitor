@@ -17,17 +17,12 @@ app.use(express.static('public'));
 const CLOUD_TARGET_URL = 'https://khs-v4w8.onrender.com'; 
 
 // 2. Detect if we are running on Render (Cloud)
-// Render automatically sets the 'RENDER' env variable to true.
 const AM_I_CLOUD = process.env.RENDER || false;
 
 // 3. Determine Database URI
-// Cloud: Uses the environment variable set in Render Dashboard
-// Local: Defaults to your school private IP if not set
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://172.16.64.105:27017/admin_monitor';
 
 // 4. Determine Sync Behavior
-// If I am Cloud -> Do NOT sync (prevent loop)
-// If I am Local -> Sync to Cloud Target
 const ACTIVE_SYNC_URL = AM_I_CLOUD ? '' : CLOUD_TARGET_URL;
 
 console.log(`\n==========================================`);
@@ -44,7 +39,6 @@ mongoose.connect(MONGO_URI)
   .then(() => console.log(`✅ MongoDB Connected`))
   .catch(err => {
       console.error(`❌ MongoDB Fail: ${err.message}`);
-      // On Cloud, a DB fail is fatal. On Local, we might survive.
       if (AM_I_CLOUD) process.exit(1); 
   });
 
@@ -108,19 +102,38 @@ app.post('/api/add-device', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 3. REMOVE DEVICE (Auto-Sync)
-app.delete('/api/remove-device/:ip', async (req, res) => {
-    const { ip } = req.params;
+// 3. REMOVE DEVICE (SMART SEARCH)
+// Use Regex route since we know it works safely on your server.
+app.delete(/\/api\/remove-device\/(.*)/, async (req, res) => {
     try {
-        const result = await Device.findOneAndDelete({ ip: ip });
+        var rawIp = req.params[0];
+        if (!rawIp) return res.status(400).json({ message: "No IP provided" });
         
-        // Sync?
+        var decodedIp = decodeURIComponent(rawIp);
+
+        // CREATE A "CLEAN" VERSION (No trailing slash)
+        var cleanIp = decodedIp;
+        if (cleanIp.endsWith('/')) {
+            cleanIp = cleanIp.substring(0, cleanIp.length - 1);
+        }
+
+        console.log('🗑️ Request to delete:', decodedIp);
+        console.log('🔎 Searching DB for:', cleanIp, 'OR', cleanIp + '/');
+
+        // SMART DELETE: Look for IP exactly as is, OR with a slash added.
+        // This guarantees we find it regardless of how it was saved.
+        const result = await Device.findOneAndDelete({ 
+            ip: { $in: [cleanIp, cleanIp + '/'] } 
+        });
+        
+        // Sync Logic
         if (ACTIVE_SYNC_URL) {
-            axios.delete(`${ACTIVE_SYNC_URL}/api/remove-device/${ip}`)
+            var encodedIP = encodeURIComponent(cleanIp);
+            axios.delete(`${ACTIVE_SYNC_URL}/api/remove-device/${encodedIP}`)
                  .catch(e => console.error(`⚠️ Sync Delete Failed: ${e.message}`));
         }
 
-        if (result) res.json({ message: `Removed ${ip}` });
+        if (result) res.json({ message: `Removed ${cleanIp}` });
         else res.status(404).json({ message: "Not found" });
 
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -164,15 +177,44 @@ app.get('/api/reset-db', async (req, res) => {
         msg.push(`✅ ${AM_I_CLOUD ? 'Cloud' : 'Local'} DB Wiped`);
     } catch (e) { msg.push(`❌ Error: ${e.message}`); }
 
-    // Sync Wipe? (Only if I am Local)
     if (ACTIVE_SYNC_URL) {
         try {
-            // Long timeout for sleeping cloud servers
             await axios.get(`${ACTIVE_SYNC_URL}/api/reset-db`, { timeout: 30000 });
             msg.push("☁️ Cloud DB Wiped");
         } catch (e) { msg.push(`⚠️ Cloud Wipe Fail: ${e.message}`); }
     }
     res.json({ message: msg.join(' | ') });
+});
+
+// 8. FORCE RESYNC (SAFE MODE)
+app.get('/api/force-resync', async (req, res) => {
+    if (AM_I_CLOUD) return res.status(400).json({ error: "Cloud cannot initiate sync" });
+    if (!ACTIVE_SYNC_URL) return res.status(400).json({ error: "No Cloud Target configured" });
+
+    try {
+        const localDevices = await Device.find();
+        let successCount = 0;
+
+        console.log(`🔄 Force Syncing ${localDevices.length} devices...`);
+        
+        for (var i = 0; i < localDevices.length; i++) {
+            var device = localDevices[i];
+            try {
+                // Safe object copy (No 'spread' syntax to crash old Node versions)
+                var deviceData = device.toObject();
+                delete deviceData._id;
+
+                await axios.post(`${ACTIVE_SYNC_URL}/api/add-device`, deviceData);
+                successCount++;
+            } catch (err) {
+                console.error(`❌ Sync Fail for ${device.ip}`);
+            }
+        }
+        res.json({ message: `Resync Complete. Synced: ${successCount}` });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 const PORT = process.env.PORT || 3000;
