@@ -2,23 +2,23 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const axios = require('axios'); // Added for Cloud Checks
+const axios = require('axios');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public')); 
 
-// --- DATABASE CONNECTION ---
+// CONFIG
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://172.16.64.105:27017/admin_monitor'; 
+// If set, we sync Add/Delete commands to this URL
+const CLOUD_API_URL = 'https://khs-v4w8.onrender.com';
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log(`✅ Connected to MongoDB`))
   .catch(err => console.error('❌ Connection error:', err));
 
 // --- SCHEMAS ---
-
-// 1. Devices Schema
 const deviceSchema = new mongoose.Schema({
   name: { type: String, required: true },
   ip: { type: String, required: true },
@@ -31,7 +31,6 @@ const deviceSchema = new mongoose.Schema({
 });
 const Device = mongoose.model('Device', deviceSchema);
 
-// 2. System Status Schema
 const statusSchema = new mongoose.Schema({
     type: { type: String, unique: true }, 
     download: String,
@@ -41,52 +40,73 @@ const statusSchema = new mongoose.Schema({
 });
 const SystemStatus = mongoose.model('SystemStatus', statusSchema);
 
-// --- ROUTES (These were missing!) ---
+// --- ROUTES ---
 
-// 1. GET ALL DEVICES
+// 1. GET ALL
 app.get('/api/devices', async (req, res) => {
   try {
     const devices = await Device.find();
     res.json(devices);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 2. ADD NEW DEVICE
+// 2. ADD DEVICE (Master Sync)
 app.post('/api/add-device', async (req, res) => {
   try {
-    const newDevice = new Device(req.body);
-    await newDevice.save();
-    res.json(newDevice);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    const { ip } = req.body;
+    
+    // A. Local Update/Create
+    let device = await Device.findOne({ ip: ip });
+    if (device) {
+        device = await Device.findOneAndUpdate({ ip: ip }, req.body, { new: true });
+    } else {
+        device = new Device(req.body);
+        await device.save();
+    }
+
+    // B. Cloud Sync (Forward the request)
+    if (CLOUD_API_URL) {
+        axios.post(`${CLOUD_API_URL}/api/add-device`, req.body)
+             .catch(e => console.error(`⚠️ Cloud Sync Add Failed: ${e.message}`));
+    }
+
+    res.json({ message: "Device Saved (Synced)", device });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 3. RECEIVE STATUS UPDATE
+// 3. REMOVE DEVICE (Master Sync) -- NEW!
+app.delete('/api/remove-device/:ip', async (req, res) => {
+    const { ip } = req.params;
+    try {
+        // A. Local Delete
+        const result = await Device.findOneAndDelete({ ip: ip });
+        
+        // B. Cloud Sync
+        if (CLOUD_API_URL) {
+            axios.delete(`${CLOUD_API_URL}/api/remove-device/${ip}`)
+                 .catch(e => console.error(`⚠️ Cloud Sync Delete Failed: ${e.message}`));
+        }
+
+        if (result) res.json({ message: `Device ${ip} removed (Synced)` });
+        else res.status(404).json({ message: "Device not found locally" });
+
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 4. STATUS UPDATE (Local & Cloud handled by Agent usually, but API accepts it too)
 app.post('/api/update-status', async (req, res) => {
   const { ip, status, details } = req.body;
-  
   const updateData = { status: status, last_seen: new Date() };
-  if(details && Object.keys(details).length > 0) {
-      updateData.details = details;
-  }
+  if(details && Object.keys(details).length > 0) updateData.details = details;
 
   try {
-    const device = await Device.findOneAndUpdate(
-        { ip: ip }, 
-        updateData,
-        { new: true }
-    );
-    if (device) res.json({ message: "Updated", device });
-    else res.status(404).json({ message: "Device not found" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    // Upsert=true ensures if Cloud missed the "Add", it creates it now
+    await Device.findOneAndUpdate({ ip: ip }, updateData, { upsert: true });
+    res.json({ message: "Status Updated" });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 4. UPDATE SPEED
+// 5. SPEED UPDATE
 app.post('/api/update-speed', async (req, res) => {
     const { download, upload, ping } = req.body;
     await SystemStatus.findOneAndUpdate(
@@ -97,48 +117,31 @@ app.post('/api/update-speed', async (req, res) => {
     res.json({ message: "Speed updated" });
 });
 
-// 5. GET SPEED
+// 6. GET SPEED
 app.get('/api/status', async (req, res) => {
     const stats = await SystemStatus.findOne({ type: 'internet_stats' });
     res.json(stats || { download: '--', upload: '--', ping: 0 });
 });
 
-// 6. UPDATE DEVICE
-app.put('/api/devices/:id', async (req, res) => {
+// 7. RESET ALL (Master Sync)
+app.get('/api/reset-db', async (req, res) => {
+    let msg = [];
+    // A. Local Wipe
     try {
-        await Device.findByIdAndUpdate(req.params.id, req.body);
-        res.json({ message: "Updated successfully" });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+        await Device.deleteMany({});
+        await SystemStatus.deleteMany({});
+        msg.push("✅ Local Wiped");
+    } catch (e) { msg.push(`❌ Local Err: ${e.message}`); }
 
-// 7. DELETE DEVICE
-app.delete('/api/devices/:id', async (req, res) => {
-    try {
-        await Device.findByIdAndDelete(req.params.id);
-        res.json({ message: "Deleted successfully" });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    // B. Cloud Wipe
+    if (CLOUD_API_URL) {
+        try {
+            await axios.get(`${CLOUD_API_URL}/api/reset-db`, { timeout: 3000 });
+            msg.push("☁️ Cloud Wiped");
+        } catch (e) { msg.push(`⚠️ Cloud Fail: ${e.message}`); }
     }
+    res.json({ message: msg.join(' | ') });
 });
-
-// --- CLOUD "SECOND OPINION" AGENT ---
-if (process.env.CLOUD_MODE === 'true') {
-    console.log("☁️  CLOUD MODE ENABLED: Starting Second Opinion Agent...");
-    setInterval(async () => {
-        const services = await Device.find({ type: 'service' });
-        console.log(`☁️  Checking ${services.length} external services from Cloud...`);
-        for (let d of services) {
-            try {
-                await axios.head(d.ip, { timeout: 5000 });
-                await Device.findByIdAndUpdate(d._id, { status: 'online', last_seen: new Date() });
-            } catch (e) {
-                await Device.findByIdAndUpdate(d._id, { status: 'offline', last_seen: new Date() });
-            }
-        }
-    }, 60000);
-}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
