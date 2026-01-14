@@ -14,11 +14,11 @@ const CLOUD_API_URL = process.env.CLOUD_API_URL || '';
 const localClient = axios.create({ timeout: 5000, proxy: false });
 const cloudClient = axios.create({ timeout: 10000, proxy: false });
 
-console.log(`🤖 Agent Started`);
+console.log(`🤖 Agent Started v3.0 (Auto-Fingerprinting)`);
 console.log(`📍 Local Target: ${LOCAL_API_URL}`);
 if (CLOUD_API_URL) console.log(`☁️ Cloud Sync:  ${CLOUD_API_URL}`);
 
-// --- HELPER: FORMAT UPTIME (Fixes the raw number issue) ---
+// --- HELPER: FORMAT UPTIME ---
 function formatUptime(ticks) {
     if (!ticks) return "N/A";
     const totalSeconds = ticks / 100;
@@ -28,7 +28,7 @@ function formatUptime(ticks) {
     return `${days}d ${hours}h ${minutes}m`;
 }
 
-// HELPER: REPORT TO BOTH WORLDS
+// HELPER: REPORT STATUS
 async function reportStatus(ip, status, details) {
     const payload = { ip, status, details };
     try { await localClient.post(`${LOCAL_API_URL}/update-status`, payload); } catch (e) {}
@@ -37,6 +37,38 @@ async function reportStatus(ip, status, details) {
     }
 }
 
+// HELPER: SAVE LEARNED FINGERPRINT (Upserts the device details)
+async function saveFingerprint(device, signature) {
+    console.log(`🧠 LEARNING: Saving signature for ${device.name}...`);
+    
+    // 1. Create a CLEAN payload. 
+    // We strictly remove '_id', 'status', and 'lastSeen' to ensure the database accepts the update.
+    const payload = {
+        name: device.name,
+        ip: device.ip,
+        type: device.type,
+        floor_id: device.floor_id,
+        map_coordinates: device.map_coordinates,
+        details: {
+            ...(device.details || {}), // Keep existing details (like keywords)
+            signature: signature       // Add the new learned signature
+        }
+    };
+    
+    try {
+        // 2. Send the Clean Payload
+        await localClient.post(`${LOCAL_API_URL}/add-device`, payload);
+        console.log(`💾 Saved fingerprint for ${device.name}`);
+        
+        // 3. OPTIONAL: Update local memory immediately so we don't retry in the very next millisecond
+        device.details = payload.details; 
+        
+    } catch (e) {
+        console.error(`❌ Failed to save fingerprint: ${e.message}`);
+    }
+}
+
+// --- SNMP CHECKER ---
 function checkSnmp(ip, community) {
     return new Promise((resolve) => {
         try {
@@ -51,7 +83,6 @@ function checkSnmp(ip, community) {
 
                 resolve({ 
                     online: true, 
-                    // FIX: Format the raw ticks here
                     uptime: formatUptime(varbinds[0].value), 
                     sysName: safelyGet(1),
                     desc: safelyGet(2)
@@ -60,6 +91,65 @@ function checkSnmp(ip, community) {
             session.on('error', () => resolve(null));
         } catch (e) { resolve(null); }
     });
+}
+
+// --- INTELLIGENT WEB CHECKER ---
+async function checkWebService(target) {
+    let url = target.ip.trim();
+    if (!url.startsWith('http')) url = `https://${url}`; 
+
+    try {
+        const start = performance.now();
+        const res = await axios.get(url, { timeout: 8000 });
+        const latency = Math.floor(performance.now() - start);
+
+        if (res.status < 200 || res.status >= 300) throw new Error(`HTTP Error ${res.status}`);
+
+        // --- INTELLIGENCE START ---
+        const html = (typeof res.data === 'string') ? res.data : JSON.stringify(res.data);
+        
+        // Extract Title and H1 using Regex (Lightweight, no DOM needed)
+        const titleMatch = html.match(/<title>(.*?)<\/title>/i);
+        const h1Match = html.match(/<h1.*?>(.*?)<\/h1>/i);
+        
+        const pageTitle = titleMatch ? titleMatch[1].trim() : "No Title";
+        const pageH1 = h1Match ? h1Match[1].replace(/<[^>]*>?/gm, '').trim() : "No H1"; // Strip inner tags
+        
+        // Create the "Fingerprint" (Signature)
+        const currentSignature = `T:${pageTitle}|H:${pageH1}`;
+        const storedSignature = target.details ? target.details.signature : null;
+
+        // LOGIC:
+        if (!storedSignature) {
+            // Case 1: First time seeing this site. LEARN IT.
+            await saveFingerprint(target, currentSignature);
+            return { status: 'online', details: { latency: `${latency}ms`, note: "Signature Learned" } };
+        } 
+        else if (storedSignature !== currentSignature) {
+            // Case 2: Content Changed! (Defacement, Error Page, Update)
+            console.warn(`⚠️ CONTENT MISMATCH for ${target.name}`);
+            console.warn(`Expected: ${storedSignature}`);
+            console.warn(`Got:      ${currentSignature}`);
+            
+            return { 
+                status: 'amber', 
+                details: { 
+                    latency: `${latency}ms`, 
+                    error: "Page Content Changed",
+                    diff: `Exp: ${storedSignature.substring(0,20)}...`
+                } 
+            };
+        }
+        
+        // Case 3: Match!
+        return { status: 'online', details: { latency: `${latency}ms`, signature: "Verified" } };
+        // --- INTELLIGENCE END ---
+
+    } catch (e) {
+        let msg = e.message;
+        if(e.response) msg = `HTTP ${e.response.status}`;
+        return { status: 'offline', details: { error: msg } };
+    }
 }
 
 async function checkNetwork() {
@@ -74,15 +164,13 @@ async function checkNetwork() {
             const cleanIP = target.ip ? target.ip.trim() : ""; 
             if (!cleanIP) continue; 
 
+            // TYPE 1: WEB SERVICES (Smart Check)
             if (target.type === 'service') {
-                const targetUrl = cleanIP.startsWith('http') ? cleanIP : `https://${cleanIP}`;
-                try {
-                    await localClient.head(targetUrl, { timeout: 5000 });
-                    status = 'online';
-                } catch (e) { 
-                    try { await localClient.get(targetUrl, { timeout: 5000 }); status = 'online'; } catch(ex){}
-                }
+                const webResult = await checkWebService(target);
+                status = webResult.status;
+                details = webResult.details;
             } 
+            // TYPE 2: FIREWALL
             else if (target.type === 'firewall') {
                 try {
                     const snmpData = await checkSnmp(cleanIP, 'smoothwallsnmp');
@@ -97,36 +185,30 @@ async function checkNetwork() {
                     } catch (pingErr) {}
                 }
             }
+            // TYPE 3: GENERIC
             else {
                 try {
                     const res = await ping.promise.probe(cleanIP, { timeout: 2 });
                     status = res.alive ? 'online' : 'offline';
                 } catch (e) {}
             }
-            // console.log(`${target.name}: ${status}`); // Optional logging
             await reportStatus(cleanIP, status, details);
         }
     } catch (err) { console.error("❌ Scan Loop Error:", err.message); }
 }
 
-// --- NEW FUNCTION: LIGHTWEIGHT INTERNET CHECK ---
 async function checkInternetHealth() {
     console.log("⏳ Checking Internet Health...");
     try {
-        // Ping Google DNS (Reliable, fast, low bandwidth)
         const res = await ping.promise.probe('8.8.8.8', { timeout: 2 });
-        
         const payload = { 
-            download: "Active", // Placeholder text
+            download: "Active", 
             upload: "Active", 
             ping: res.alive ? Math.floor(res.time) : 999 
         };
-        
         console.log(`🌍 Internet Latency: ${payload.ping}ms`);
-
         await localClient.post(`${LOCAL_API_URL}/update-speed`, payload);
         if (CLOUD_API_URL) await cloudClient.post(`${CLOUD_API_URL}/update-speed`, payload);
-
     } catch (err) { console.error("❌ Internet Check failed:", err.message); }
 }
 
@@ -137,4 +219,4 @@ async function checkInternetHealth() {
 })();
 
 setInterval(checkNetwork, 60000); 
-setInterval(checkInternetHealth, 60000); // Check latency every 1 minute
+setInterval(checkInternetHealth, 60000);
