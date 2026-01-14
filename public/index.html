@@ -59,14 +59,14 @@
 </head>
 <body>
 
-    <div id="sidebar-left" class="sidebar">
-        <div class="card card-speed">
-            <h2>Internet Bandwidth</h2>
-            <div style="text-align: center; padding: 15px 0;">
-                <div class="big-stat" id="down-speed">--</div>
-                <span class="unit">Mbps DOWNLOAD</span>
-            </div>
-        </div>
+<div class="card card-speed">
+    <h2>Internet Health</h2>
+    <div style="text-align: center; padding: 15px 0;">
+        <div class="big-stat" id="net-ping">--</div>
+        <span class="unit">ms LATENCY</span>
+    </div>
+</div>
+
         <div class="card card-cloud">
             <h2>Cloud Services</h2>
             <div id="cloud-window" class="list-window"></div>
@@ -220,12 +220,20 @@
                 });
             } catch (e) { console.log(e); }
 
-            try {
-                // RELATIVE PATH FOR SPEED
-                const sRes = await fetch('/api/status');
-                const speed = await sRes.json();
-                document.getElementById('down-speed').innerText = speed.download || '--';
-            } catch (e) {}
+           try {
+    // RELATIVE PATH FOR SPEED
+    const sRes = await fetch('/api/status');
+    const speed = await sRes.json();
+    // Update the Ping ID instead of Download ID
+    document.getElementById('net-ping').innerText = speed.ping || '--';
+    
+    // Optional: Color code it
+    const pVal = parseInt(speed.ping);
+    const pElem = document.getElementById('net-ping');
+    if(pVal < 50) pElem.style.color = '#00d26a'; // Green
+    else if(pVal < 100) pElem.style.color = '#ffc107'; // Orange
+    else pElem.style.color = '#f8312f'; // Red
+} catch (e) {}
         }
 
         setInterval(() => { currentMapIndex = (currentMapIndex + 1) % maps.length; loadMap(currentMapIndex); updateDashboard(); }, 15000); 
