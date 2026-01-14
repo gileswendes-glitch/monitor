@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Database Cleanup Tool</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f0f0f0; }
+        h1 { color: #d32f2f; }
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+        th { background: #333; color: white; }
+        tr:hover { background: #f9f9f9; }
+        .btn-del { 
+            background: #ff4444; color: white; border: none; 
+            padding: 8px 15px; cursor: pointer; font-weight: bold; border-radius: 4px;
+        }
+        .btn-del:hover { background: #cc0000; }
+        .raw-data { font-size: 10px; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>🧹 Database Ghost Buster</h1>
+    <p>Use this to delete "undefined" devices or duplicates that don't show up in the main Admin UI.</p>
+    <button onclick="loadDevices()" style="padding:10px; margin-bottom:20px;">🔄 Refresh List</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>IP (The ID)</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="list"></tbody>
+    </table>
+
+    <script>
+        async function loadDevices() {
+            const tbody = document.getElementById('list');
+            tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+            
+            try {
+                const res = await fetch('/api/devices');
+                const devices = await res.json();
+                
+                tbody.innerHTML = '';
+                devices.forEach(d => {
+                    const row = document.createElement('tr');
+                    
+                    // highlight problematic ones
+                    let style = '';
+                    if (!d.name || d.name === 'undefined') style = 'background:#ffebeb;';
+                    
+                    row.style = style;
+                    row.innerHTML = `
+                        <td><strong>${d.name || '<span style="color:red">UNDEFINED</span>'}</strong></td>
+                        <td>${d.ip}</td>
+                        <td>${d.status}</td>
+                        <td>
+                            <button class="btn-del" onclick="deleteDevice('${d.ip}')">🗑️ DELETE</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="4" style="color:red">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        async function deleteDevice(ip) {
+            if(!confirm(`Permanently delete "${ip}"?`)) return;
+
+            // We use encodeURIComponent to handle the slashes that caused the issue in the first place
+            const encodedIP = encodeURIComponent(ip);
+            
+            try {
+                const res = await fetch(`/api/remove-device/${encodedIP}`, { method: 'DELETE' });
+                const data = await res.json();
+                
+                if(res.ok) {
+                    alert("✅ Deleted!");
+                    loadDevices(); // Reload list
+                } else {
+                    alert("❌ Error: " + data.message);
+                }
+            } catch (e) {
+                alert("Connection Error: " + e.message);
+            }
+        }
+
+        // Load on start
+        loadDevices();
+    </script>
+</body>
+</html>
