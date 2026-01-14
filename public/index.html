@@ -5,36 +5,49 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
+        /* --- CORE LAYOUT --- */
         body { margin: 0; background: #121212; display: flex; font-family: 'Inter', 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; color: #e0e0e0; }
+        
         .sidebar { width: 320px; background: #1e1e1e; display: flex; flex-direction: column; padding: 25px; box-shadow: 0 0 30px rgba(0,0,0,0.5); z-index: 2000; }
         #sidebar-left { border-right: 1px solid #333; }
         #sidebar-right { border-left: 1px solid #333; }
-        
-        .card { background: #252525; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
-        .card-speed { border-top: 3px solid #4db8ff; }
-        .card-cloud { border-top: 3px solid #28a745; height: 150px; }
-        .card-local { border-top: 3px solid #ffc107; flex-grow: 1; min-height: 0; }
-        .card-firewall { border-top: 3px solid #fd7e14; min-height: 160px; }
-        .card-hardware { border-top: 3px solid #e83e8c; height: auto; } 
-        .card-nvr { border-top: 3px solid #6f42c1; height: auto; }      
-        .card-switch { border-top: 3px solid #17a2b8; flex: 1; min-height: 0; }         
-        .card-printer { border-top: 3px solid #0d6efd; flex: 1; min-height: 0; }        
+        #main-content { flex-grow: 1; display: flex; flex-direction: column; background: #000; }
 
+        /* --- CARDS & PANELS --- */
+        .card { background: #252525; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+        
+        /* LEFT SIDEBAR STACKING FIX */
+        .card-speed { border-top: 3px solid #4db8ff; flex: 0 0 auto; } /* Auto height (fit content) */
+        .card-cloud { border-top: 3px solid #28a745; flex: 0 0 auto; height: 180px; } /* Fixed height */
+        .card-local { border-top: 3px solid #ffc107; flex: 1; min-height: 0; } /* Fills remaining space */
+        
+        /* RIGHT SIDEBAR STACKING */
+        .card-firewall { border-top: 3px solid #fd7e14; min-height: 160px; flex: 0 0 auto; }
+        .card-hardware { border-top: 3px solid #e83e8c; flex: 0 0 auto; } 
+        .card-nvr { border-top: 3px solid #6f42c1; flex: 0 0 auto; }      
+        .card-switch { border-top: 3px solid #17a2b8; flex: 1; min-height: 0; } /* Share bottom space */        
+        .card-printer { border-top: 3px solid #0d6efd; flex: 1; min-height: 0; } /* Share bottom space */       
+
+        /* TEXT & STATS */
         .card h2 { margin: 0 0 10px 0; font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
         .big-stat { font-size: 56px; font-weight: 300; color: #fff; letter-spacing: -2px; line-height: 1; }
         .unit { font-size: 13px; color: #666; font-weight: 500; margin-top: 5px; display: block; }
         
+        /* SCROLLABLE LISTS */
         .list-window { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
         .list-window::-webkit-scrollbar { width: 4px; }
         .list-window::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
 
+        /* LIST ITEMS */
         .service-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #333; font-size: 13px; color: #ccc; }
         
+        /* DOTS */
         .status-dot { width: 10px; height: 10px; border-radius: 50%; }
         .online { background: #00d26a; box-shadow: 0 0 8px rgba(0, 210, 106, 0.4); }
         .amber { background: #ffc107; box-shadow: 0 0 8px rgba(255, 193, 7, 0.6); animation: pulse-amber 2s infinite; }
         .offline { background: #f8312f; box-shadow: 0 0 10px rgba(248, 49, 47, 0.6); animation: flash-red 0.8s infinite alternate; }
         
+        /* FIREWALL SPECIFIC */
         .fw-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; border-bottom: 1px solid #333; padding-bottom: 4px; }
         .fw-label { color: #888; }
         .fw-val { color: #fff; font-weight: 600; text-align: right; }
@@ -43,10 +56,9 @@
         @keyframes pulse-amber { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
         @keyframes flash-red { from { opacity: 1; box-shadow: 0 0 10px rgba(248, 49, 47, 0.8); } to { opacity: 0.3; box-shadow: 0 0 2px rgba(248, 49, 47, 0.2); } }
 
-        #main-content { flex-grow: 1; display: flex; flex-direction: column; background: #000; }
-        .page-header { background: rgba(30, 30, 30, 0.9); backdrop-filter: blur(10px); color: #fff; padding: 15px 30px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; z-index: 10; font-size: 20px; }
+        /* HEADER & MAP */
+        .page-header { background: rgba(30, 30, 30, 0.9); backdrop-filter: blur(10px); color: #fff; padding: 15px 30px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; z-index: 10; font-size: 20px; flex-shrink: 0; }
         
-        /* NEW BADGE STYLES */
         .badge { font-size: 11px; font-weight: bold; padding: 5px 10px; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; margin-right: 15px; }
         .badge-local { background: rgba(0, 210, 106, 0.15); color: #00d26a; border: 1px solid #00d26a; }
         .badge-cloud { background: rgba(253, 126, 20, 0.15); color: #fd7e14; border: 1px solid #fd7e14; }
@@ -55,27 +67,62 @@
         #map { height: 100%; width: 100%; background: #121212; }
         #map-title { position: absolute; top: 20px; right: 20px; background: rgba(20, 20, 20, 0.85); color: #e0e0e0; padding: 8px 20px; border-radius: 6px; z-index: 1000; backdrop-filter: blur(5px); border: 1px solid #444; }
         .version-footer { margin-top: auto; text-align: center; font-size: 11px; color: #444; padding-top: 20px; border-top: 1px solid #2a2a2a; }
+
+        /* --- MOBILE RESPONSIVE TWEAKS --- */
+        @media screen and (max-width: 900px) {
+            body { 
+                flex-direction: column; /* Stack vertically */
+                overflow-y: auto;       /* Allow page scrolling */
+                height: auto;           /* Remove fixed height */
+            }
+            .sidebar { 
+                width: 100%;            /* Full width */
+                height: auto;           /* Fit content */
+                box-shadow: none;       
+                padding: 15px;
+                box-sizing: border-box; /* Prevent padding overflow */
+                order: 2;               /* Move below header */
+            }
+            #sidebar-left { border-right: none; border-bottom: 1px solid #333; }
+            #sidebar-right { border-left: none; }
+            
+            #main-content {
+                order: 1;               /* Header stays on top */
+                flex-grow: 0;           /* Don't expand */
+            }
+
+            /* HIDE MAP ON MOBILE */
+            #map-wrapper { display: none; }
+            .page-header { position: sticky; top: 0; }
+            
+            /* ADJUST CARDS FOR MOBILE SCROLLING */
+            .list-window { max-height: 250px; } /* Prevent lists from being too long */
+            .card-local, .card-switch, .card-printer { flex: none; height: auto; }
+        }
     </style>
 </head>
 <body>
 
-<div class="card card-speed">
-    <h2>Internet Health</h2>
-    <div style="text-align: center; padding: 15px 0;">
-        <div class="big-stat" id="net-ping">--</div>
-        <span class="unit">ms LATENCY</span>
-    </div>
-</div>
+    <div id="sidebar-left" class="sidebar">
+        <div class="card card-speed">
+            <h2>Internet Health</h2>
+            <div style="text-align: center; padding: 15px 0;">
+                <div class="big-stat" id="net-ping">--</div>
+                <span class="unit">ms LATENCY</span>
+            </div>
+        </div>
 
         <div class="card card-cloud">
             <h2>Cloud Services</h2>
             <div id="cloud-window" class="list-window"></div>
         </div>
+
         <div class="card card-local">
             <h2>Local Servers</h2>
             <div id="server-window" class="list-window"></div>
         </div>
-        <div class="version-footer">KINGSBURY MONITOR v2.2</div>
+        
+        <div class="version-footer">KINGSBURY MONITOR v2.3</div>
     </div>
 
     <div id="main-content">
@@ -144,10 +191,13 @@
         let currentMapIndex = 0;
 
         function loadMap(index) {
+            // Safety: If map wrapper is hidden (mobile), don't load heavy images
+            if (window.getComputedStyle(document.getElementById('map-wrapper')).display === 'none') return;
+
             const config = maps[index];
             document.getElementById('map-title').innerText = config.name;
-            var img = new Image(); img.src = "/maps/" + config.id; // Added /maps/ prefix just in case, ensure your images are in public/maps/ or public/
-            img.src = config.id; // Revert to root if that's where they are
+            var img = new Image(); 
+            img.src = config.id; 
             
             img.onload = function() {
                 var w = this.width; var h = this.height;
@@ -160,7 +210,6 @@
 
         async function updateDashboard() {
             try {
-                // RELATIVE PATHS FOR HYBRID COMPATIBILITY
                 const res = await fetch('/api/devices');
                 const devices = await res.json();
                 
@@ -209,31 +258,30 @@
                 if (firewallHTML) fwContainer.innerHTML = firewallHTML;
                 else fwContainer.innerHTML = '<div style="text-align: center; color: #666; font-size: 13px;">No Firewall Configured</div>';
 
-                devicesLayer.clearLayers();
-                devices.forEach(d => {
-                    if (d.floor_id === maps[currentMapIndex].id && d.type === 'switch') {
-                        let color = d.status === 'online' ? '#00d26a' : (d.status === 'amber' ? '#ffc107' : '#f8312f');
-                        L.circleMarker([d.map_coordinates.y, d.map_coordinates.x], {
-                            color: 'transparent', fillColor: color, fillOpacity: 0.9, radius: 8
-                        }).addTo(devicesLayer).bindTooltip(d.name, {permanent: false, direction: 'top'});
-                    }
-                });
+                // Map Update (Only if visible)
+                if (window.getComputedStyle(document.getElementById('map-wrapper')).display !== 'none') {
+                    devicesLayer.clearLayers();
+                    devices.forEach(d => {
+                        if (d.floor_id === maps[currentMapIndex].id && d.type === 'switch') {
+                            let color = d.status === 'online' ? '#00d26a' : (d.status === 'amber' ? '#ffc107' : '#f8312f');
+                            L.circleMarker([d.map_coordinates.y, d.map_coordinates.x], {
+                                color: 'transparent', fillColor: color, fillOpacity: 0.9, radius: 8
+                            }).addTo(devicesLayer).bindTooltip(d.name, {permanent: false, direction: 'top'});
+                        }
+                    });
+                }
             } catch (e) { console.log(e); }
 
-           try {
-    // RELATIVE PATH FOR SPEED
-    const sRes = await fetch('/api/status');
-    const speed = await sRes.json();
-    // Update the Ping ID instead of Download ID
-    document.getElementById('net-ping').innerText = speed.ping || '--';
-    
-    // Optional: Color code it
-    const pVal = parseInt(speed.ping);
-    const pElem = document.getElementById('net-ping');
-    if(pVal < 50) pElem.style.color = '#00d26a'; // Green
-    else if(pVal < 100) pElem.style.color = '#ffc107'; // Orange
-    else pElem.style.color = '#f8312f'; // Red
-} catch (e) {}
+            try {
+                const sRes = await fetch('/api/status');
+                const speed = await sRes.json();
+                document.getElementById('net-ping').innerText = speed.ping || '--';
+                const pVal = parseInt(speed.ping);
+                const pElem = document.getElementById('net-ping');
+                if(pVal < 50) pElem.style.color = '#00d26a'; 
+                else if(pVal < 100) pElem.style.color = '#ffc107'; 
+                else pElem.style.color = '#f8312f'; 
+            } catch (e) {}
         }
 
         setInterval(() => { currentMapIndex = (currentMapIndex + 1) % maps.length; loadMap(currentMapIndex); updateDashboard(); }, 15000); 
