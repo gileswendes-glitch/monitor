@@ -74,7 +74,7 @@ app.post('/api/add-device', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 3. REMOVE DEVICE (Master Sync) -- NEW!
+// 3. REMOVE DEVICE (Master Sync)
 app.delete('/api/remove-device/:ip', async (req, res) => {
     const { ip } = req.params;
     try {
@@ -93,14 +93,13 @@ app.delete('/api/remove-device/:ip', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 4. STATUS UPDATE (Local & Cloud handled by Agent usually, but API accepts it too)
+// 4. STATUS UPDATE
 app.post('/api/update-status', async (req, res) => {
   const { ip, status, details } = req.body;
   const updateData = { status: status, last_seen: new Date() };
   if(details && Object.keys(details).length > 0) updateData.details = details;
 
   try {
-    // Upsert=true ensures if Cloud missed the "Add", it creates it now
     await Device.findOneAndUpdate({ ip: ip }, updateData, { upsert: true });
     res.json({ message: "Status Updated" });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -123,7 +122,7 @@ app.get('/api/status', async (req, res) => {
     res.json(stats || { download: '--', upload: '--', ping: 0 });
 });
 
-// 7. RESET ALL (Master Sync)
+// 7. RESET ALL (Master Sync - Long Timeout)
 app.get('/api/reset-db', async (req, res) => {
     let msg = [];
     // A. Local Wipe
@@ -133,10 +132,10 @@ app.get('/api/reset-db', async (req, res) => {
         msg.push("✅ Local Wiped");
     } catch (e) { msg.push(`❌ Local Err: ${e.message}`); }
 
-    // B. Cloud Wipe
+    // B. Cloud Wipe (TIMEOUT INCREASED TO 30 SECONDS)
     if (CLOUD_API_URL) {
         try {
-            await axios.get(`${CLOUD_API_URL}/api/reset-db`, { timeout: 3000 });
+            await axios.get(`${CLOUD_API_URL}/api/reset-db`, { timeout: 30000 });
             msg.push("☁️ Cloud Wiped");
         } catch (e) { msg.push(`⚠️ Cloud Fail: ${e.message}`); }
     }
