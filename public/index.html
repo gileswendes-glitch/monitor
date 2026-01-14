@@ -16,17 +16,22 @@
         /* --- CARDS & PANELS --- */
         .card { background: #252525; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
         
-        /* LEFT SIDEBAR STACKING FIX */
-        .card-speed { border-top: 3px solid #4db8ff; flex: 0 0 auto; } /* Auto height */
-        .card-cloud { border-top: 3px solid #28a745; flex: 0 0 auto; height: 180px; } /* Fixed height */
-        .card-local { border-top: 3px solid #ffc107; flex: 1; min-height: 0; } /* Fills remaining space */
+        /* STACKING FIX */
+        .card-speed { border-top: 3px solid #4db8ff; flex: 0 0 auto; }
+        .card-cloud { border-top: 3px solid #28a745; flex: 0 0 auto; height: 180px; }
+        .card-local { border-top: 3px solid #ffc107; flex: 1; min-height: 0; }
         
-        /* RIGHT SIDEBAR STACKING */
+        /* RIGHT SIDEBAR ITEMS */
         .card-firewall { border-top: 3px solid #fd7e14; min-height: 160px; flex: 0 0 auto; }
         .card-hardware { border-top: 3px solid #e83e8c; flex: 0 0 auto; } 
         .card-nvr { border-top: 3px solid #6f42c1; flex: 0 0 auto; }      
-        .card-switch { border-top: 3px solid #17a2b8; flex: 1; min-height: 0; }     
-        .card-printer { border-top: 3px solid #0d6efd; flex: 1; min-height: 0; }      
+        .card-switch { border-top: 3px solid #17a2b8; flex: 0 0 auto; }     
+        .card-printer { border-top: 3px solid #0d6efd; flex: 0 0 auto; }   
+        /* NEW CARDS */
+        .card-telephone { border-top: 3px solid #00bcd4; flex: 0 0 auto; }
+        .card-wap { border-top: 3px solid #3f51b5; flex: 0 0 auto; }
+        .card-access { border-top: 3px solid #9c27b0; flex: 0 0 auto; }
+        .card-cctv { border-top: 3px solid #f44336; flex: 0 0 auto; }
 
         /* TEXT & STATS */
         .card h2 { margin: 0 0 10px 0; font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
@@ -34,11 +39,9 @@
         .unit { font-size: 13px; color: #666; font-weight: 500; margin-top: 5px; display: block; }
         
         /* SCROLLABLE LISTS */
-        .list-window { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+        .list-window { overflow-y: auto; flex-grow: 1; padding-right: 5px; max-height: 200px; }
         .list-window::-webkit-scrollbar { width: 4px; }
         .list-window::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
-
-        /* LIST ITEMS */
         .service-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #333; font-size: 13px; color: #ccc; }
         
         /* DOTS */
@@ -47,6 +50,15 @@
         .amber { background: #ffc107; box-shadow: 0 0 8px rgba(255, 193, 7, 0.6); animation: pulse-amber 2s infinite; }
         .offline { background: #f8312f; box-shadow: 0 0 10px rgba(248, 49, 47, 0.6); animation: flash-red 0.8s infinite alternate; }
         
+        /* GLOWING ICONS */
+        .custom-icon { 
+            font-size: 18px; text-align: center; line-height: 20px; 
+            transition: all 0.5s ease-in-out;
+        }
+        .glow-green { text-shadow: 0 0 10px #00d26a, 0 0 20px #00d26a; filter: drop-shadow(0 0 5px #00d26a); }
+        .glow-amber { text-shadow: 0 0 10px #ffc107, 0 0 20px #ffc107; filter: drop-shadow(0 0 5px #ffc107); }
+        .glow-red { text-shadow: 0 0 10px #f8312f, 0 0 20px #f8312f; filter: drop-shadow(0 0 5px #f8312f); }
+
         /* FIREWALL SPECIFIC */
         .fw-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; border-bottom: 1px solid #333; padding-bottom: 4px; }
         .fw-label { color: #888; }
@@ -68,35 +80,26 @@
         #map-title { position: absolute; top: 20px; right: 20px; background: rgba(20, 20, 20, 0.85); color: #e0e0e0; padding: 8px 20px; border-radius: 6px; z-index: 1000; backdrop-filter: blur(5px); border: 1px solid #444; }
         .version-footer { margin-top: auto; text-align: center; font-size: 11px; color: #444; padding-top: 20px; border-top: 1px solid #2a2a2a; }
 
+        /* NEW: MAP CONTROLS */
+        #map-controls { position: absolute; bottom: 20px; right: 20px; z-index: 1000; display: flex; gap: 10px; }
+        .control-btn { 
+            background: rgba(20, 20, 20, 0.85); color: #e0e0e0; border: 1px solid #444; 
+            padding: 10px 15px; border-radius: 6px; cursor: pointer; font-size: 14px; 
+            backdrop-filter: blur(5px); transition: all 0.2s; display: flex; align-items: center; justify-content: center; 
+        }
+        .control-btn:hover { background: rgba(50, 50, 50, 0.9); border-color: #666; }
+        .control-btn.paused { background: rgba(220, 53, 69, 0.8); border-color: #dc3545; color: white; }
+
         /* --- MOBILE RESPONSIVE TWEAKS --- */
         @media screen and (max-width: 900px) {
-            body { 
-                flex-direction: column; /* Stack vertically */
-                overflow-y: auto;       /* Allow page scrolling */
-                height: auto;           /* Remove fixed height */
-            }
-            .sidebar { 
-                width: 100%;            /* Full width */
-                height: auto;           /* Fit content */
-                box-shadow: none;       
-                padding: 15px;
-                box-sizing: border-box; /* Prevent padding overflow */
-                order: 2;               /* Move below header */
-            }
+            body { flex-direction: column; overflow-y: auto; height: auto; }
+            .sidebar { width: 100%; height: auto; box-shadow: none; padding: 15px; box-sizing: border-box; order: 2; }
             #sidebar-left { border-right: none; border-bottom: 1px solid #333; }
             #sidebar-right { border-left: none; }
-            
-            #main-content {
-                order: 1;               /* Header stays on top */
-                flex-grow: 0;           /* Don't expand */
-            }
-
-            /* HIDE MAP ON MOBILE */
+            #main-content { order: 1; flex-grow: 0; }
             #map-wrapper { display: none; }
             .page-header { position: sticky; top: 0; }
-            
-            /* ADJUST CARDS FOR MOBILE SCROLLING */
-            .list-window { max-height: 250px; } /* Prevent lists from being too long */
+            .list-window { max-height: 250px; }
             .card-local, .card-switch, .card-printer { flex: none; height: auto; }
         }
     </style>
@@ -111,18 +114,15 @@
                 <span class="unit">ms LATENCY</span>
             </div>
         </div>
-
         <div class="card card-cloud">
             <h2>Cloud Services</h2>
             <div id="cloud-window" class="list-window"></div>
         </div>
-
         <div class="card card-local">
             <h2>Local Servers</h2>
             <div id="server-window" class="list-window"></div>
         </div>
-        
-        <div class="version-footer">KINGSBURY MONITOR v2.4</div>
+        <div class="version-footer">KINGSBURY MONITOR v2.7</div>
     </div>
 
     <div id="main-content">
@@ -133,34 +133,60 @@
             </div>
             <span id="clock" style="font-size:14px; color:#888;"></span>
         </div>
-        
-        <div id="map-wrapper"><div id="map-title">Loading...</div><div id="map"></div></div>
+        <div id="map-wrapper">
+            <div id="map-title">Loading...</div>
+            
+            <div id="map-controls">
+                <button class="control-btn" id="pause-btn" onclick="togglePause()">⏸️ Pause</button>
+                <button class="control-btn" onclick="nextMap()">⏭️ Next</button>
+            </div>
+
+            <div id="map"></div>
+        </div>
     </div>
 
     <div id="sidebar-right" class="sidebar">
         <div class="card card-firewall">
-            <h2>Firewall Status</h2>
+            <h2>Firewall</h2>
             <div id="firewall-content" style="padding-top: 5px;"></div>
-        </div>
-        
-        <div class="card card-hardware">
-            <h2>Physical Hardware</h2>
-            <div id="hardware-list" class="list-window"></div>
         </div>
         
         <div class="card card-nvr">
             <h2>NVRs</h2>
             <div id="nvr-list" class="list-window"></div>
         </div>
-
-        <div class="card card-switch">
-            <h2>Switch Hardware</h2>
-            <div id="switch-window" class="list-window"></div>
+        <div class="card card-cctv">
+            <h2>CCTV Cameras</h2>
+            <div id="cctv-list" class="list-window"></div>
         </div>
         
+        <div class="card card-switch">
+            <h2>Switches</h2>
+            <div id="switch-window" class="list-window"></div>
+        </div>
+        <div class="card card-wap">
+            <h2>Wireless APs</h2>
+            <div id="wap-list" class="list-window"></div>
+        </div>
+
+        <div class="card card-telephone">
+            <h2>Telephones</h2>
+            <div id="tel-list" class="list-window"></div>
+        </div>
+
+        <div class="card card-access">
+            <h2>Access Control</h2>
+            <div id="access-list" class="list-window"></div>
+        </div>
+
         <div class="card card-printer">
             <h2>Printers</h2>
             <div id="printer-window" class="list-window"></div>
+        </div>
+        
+        <div class="card card-hardware">
+            <h2>Misc Hardware</h2>
+            <div id="hardware-list" class="list-window"></div>
         </div>
     </div>
 
@@ -189,16 +215,50 @@
         var devicesLayer = L.layerGroup().addTo(map);
         var currentMapLayer;
         let currentMapIndex = 0;
+        
+        // --- CONTROL LOGIC ---
+        let isPaused = false;
+        let mapTimer;
+
+        function togglePause() {
+            isPaused = !isPaused;
+            const btn = document.getElementById('pause-btn');
+            if(isPaused) {
+                btn.innerText = "▶️ Play";
+                btn.classList.add('paused');
+            } else {
+                btn.innerText = "⏸️ Pause";
+                btn.classList.remove('paused');
+            }
+        }
+
+        function nextMap() {
+            // Force move to next map
+            currentMapIndex = (currentMapIndex + 1) % maps.length;
+            loadMap(currentMapIndex);
+            updateDashboard(); // Refresh dots instantly
+            
+            // Reset Interval so it doesn't skip immediately again
+            clearInterval(mapTimer);
+            startMapTimer();
+        }
+
+        function startMapTimer() {
+            mapTimer = setInterval(() => { 
+                if(!isPaused) {
+                    currentMapIndex = (currentMapIndex + 1) % maps.length; 
+                    loadMap(currentMapIndex); 
+                    updateDashboard(); 
+                }
+            }, 15000);
+        }
 
         function loadMap(index) {
-            // Safety: If map wrapper is hidden (mobile), don't load heavy images
             if (window.getComputedStyle(document.getElementById('map-wrapper')).display === 'none') return;
-
             const config = maps[index];
             document.getElementById('map-title').innerText = config.name;
             var img = new Image(); 
             img.src = config.id; 
-            
             img.onload = function() {
                 var w = this.width; var h = this.height;
                 if (currentMapLayer) map.removeLayer(currentMapLayer);
@@ -214,6 +274,7 @@
                 const devices = await res.json();
                 
                 let cloudH='', serverH='', hardwareH='', nvrH='', switchH='', prtH='';
+                let telH='', wapH='', accessH='', cctvH='';
                 let firewallHTML = '';
 
                 devices.sort((a, b) => a.name.localeCompare(b.name));
@@ -226,8 +287,13 @@
                     else if (d.type === 'server') serverH += itemHTML;
                     else if (d.type === 'hardware') hardwareH += itemHTML;
                     else if (d.type === 'nvr') nvrH += itemHTML;
+                    else if (d.type === 'switch') switchH += itemHTML; 
                     else if (d.type === 'switch_hw') switchH += itemHTML;
                     else if (d.type === 'printer') prtH += itemHTML;
+                    else if (d.type === 'telephone') telH += itemHTML;
+                    else if (d.type === 'wap') wapH += itemHTML;
+                    else if (d.type === 'access_control') accessH += itemHTML;
+                    else if (d.type === 'cctv') cctvH += itemHTML;
                     
                     else if (d.type === 'firewall') {
                         const det = d.details || {};
@@ -235,15 +301,11 @@
                         const uptime = det.uptime || '--';
                         let desc = det.desc || 'No System Info';
                         desc = desc.replace(/^Linux\s+\S+\s+/, ''); 
-
-                        firewallHTML += `
-                            <div style="margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
-                                <div class="fw-row"><span class="fw-label">Device Name</span><span class="fw-val">${sysName}</span></div>
-                                <div class="fw-row"><span class="fw-label">Status</span><div class="status-dot ${statusClass}"></div></div>
-                                <div class="fw-row"><span class="fw-label">Uptime</span><span class="fw-val" style="color:#00d26a;">${uptime}</span></div>
-                                <div class="fw-desc">${desc}</div>
-                            </div>
-                        `;
+                        firewallHTML += `<div style="margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
+                            <div class="fw-row"><span class="fw-label">Device Name</span><span class="fw-val">${sysName}</span></div>
+                            <div class="fw-row"><span class="fw-label">Status</span><div class="status-dot ${statusClass}"></div></div>
+                            <div class="fw-row"><span class="fw-label">Uptime</span><span class="fw-val" style="color:#00d26a;">${uptime}</span></div>
+                            <div class="fw-desc">${desc}</div></div>`;
                     }
                 });
 
@@ -253,28 +315,51 @@
                 document.getElementById('printer-window').innerHTML = prtH;
                 document.getElementById('hardware-list').innerHTML = hardwareH;
                 document.getElementById('nvr-list').innerHTML = nvrH;
-                
-                const fwContainer = document.getElementById('firewall-content');
-                if (firewallHTML) fwContainer.innerHTML = firewallHTML;
-                else fwContainer.innerHTML = '<div style="text-align: center; color: #666; font-size: 13px;">No Firewall Configured</div>';
+                document.getElementById('tel-list').innerHTML = telH;
+                document.getElementById('wap-list').innerHTML = wapH;
+                document.getElementById('access-list').innerHTML = accessH;
+                document.getElementById('cctv-list').innerHTML = cctvH;
 
-                // Map Update (Only if visible)
+                const fwContainer = document.getElementById('firewall-content');
+                fwContainer.innerHTML = firewallHTML || '<div style="text-align: center; color: #666; font-size: 13px;">No Firewall Configured</div>';
+
+                // Map Update
                 if (window.getComputedStyle(document.getElementById('map-wrapper')).display !== 'none') {
                     devicesLayer.clearLayers();
                     devices.forEach(d => {
-                        // FIX: Crash Protection (Check for coordinates existence)
                         if (!d.map_coordinates || typeof d.map_coordinates.x === 'undefined') return;
 
-                        // FIX: Show ALL device types, not just 'switch'
                         if (d.floor_id === maps[currentMapIndex].id) {
                             
-                            let color = '#f8312f'; // Default Red
-                            if (d.status === 'online') color = '#00d26a'; // Green
-                            else if (d.status === 'amber') color = '#ffc107'; // Amber
+                            let glowClass = 'glow-red';
+                            if (d.status === 'online') glowClass = 'glow-green';
+                            else if (d.status === 'amber') glowClass = 'glow-amber';
 
-                            L.circleMarker([d.map_coordinates.y, d.map_coordinates.x], {
-                                color: 'transparent', fillColor: color, fillOpacity: 0.9, radius: 8
-                            }).addTo(devicesLayer).bindTooltip(d.name, {permanent: false, direction: 'top'});
+                            let iconHTML = null;
+
+                            if (d.type === 'printer') iconHTML = '🖨️';
+                            else if (d.type === 'telephone') iconHTML = '📞';
+                            else if (d.type === 'wap') iconHTML = '📶';
+                            else if (d.type === 'access_control') iconHTML = '🔐';
+                            else if (d.type === 'cctv') iconHTML = '📹';
+
+                            if (iconHTML) {
+                                const icon = L.divIcon({
+                                    className: `custom-icon ${glowClass}`,
+                                    html: iconHTML,
+                                    iconSize: [25, 25],
+                                    iconAnchor: [12, 12]
+                                });
+                                L.marker([d.map_coordinates.y, d.map_coordinates.x], {icon: icon}).addTo(devicesLayer).bindTooltip(d.name, {direction:'top'});
+                            } else {
+                                let color = '#f8312f';
+                                if (d.status === 'online') color = '#00d26a';
+                                else if (d.status === 'amber') color = '#ffc107';
+
+                                L.circleMarker([d.map_coordinates.y, d.map_coordinates.x], {
+                                    color: 'transparent', fillColor: color, fillOpacity: 0.9, radius: 8
+                                }).addTo(devicesLayer).bindTooltip(d.name, {permanent: false, direction: 'top'});
+                            }
                         }
                     });
                 }
@@ -292,8 +377,11 @@
             } catch (e) {}
         }
 
-        setInterval(() => { currentMapIndex = (currentMapIndex + 1) % maps.length; loadMap(currentMapIndex); updateDashboard(); }, 15000); 
-        loadMap(0); updateDashboard(); setInterval(updateDashboard, 5000); 
+        // INIT
+        startMapTimer();
+        loadMap(0); 
+        updateDashboard(); 
+        setInterval(updateDashboard, 5000); 
     </script>
 </body>
 </html>
