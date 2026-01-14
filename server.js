@@ -11,8 +11,17 @@ app.use(express.static('public'));
 
 // CONFIG
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://172.16.64.105:27017/admin_monitor'; 
-// If set, we sync Add/Delete commands to this URL
-const CLOUD_API_URL = 'https://khs-v4w8.onrender.com';
+
+// --- LOOP PROTECTION ---
+// 1. Are we running on the Cloud (Render)?
+const IS_CLOUD = process.env.RENDER || false;
+
+// 2. If we are on Cloud, DISABLE syncing (Empty String).
+//    If we are Local, ENABLE syncing (Target URL).
+const CLOUD_API_URL = IS_CLOUD ? '' : 'https://khs-v4w8.onrender.com';
+
+console.log(`🤖 System Mode: ${IS_CLOUD ? 'CLOUD SERVER' : 'LOCAL CONTROLLER'}`);
+if (!IS_CLOUD) console.log(`🔗 Syncing to: ${CLOUD_API_URL}`);
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log(`✅ Connected to MongoDB`))
@@ -50,12 +59,12 @@ app.get('/api/devices', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 2. ADD DEVICE (Master Sync)
+// 2. ADD DEVICE (With Loop Protection)
 app.post('/api/add-device', async (req, res) => {
   try {
     const { ip } = req.body;
     
-    // A. Local Update/Create
+    // A. Save to Database
     let device = await Device.findOne({ ip: ip });
     if (device) {
         device = await Device.findOneAndUpdate({ ip: ip }, req.body, { new: true });
@@ -64,31 +73,29 @@ app.post('/api/add-device', async (req, res) => {
         await device.save();
     }
 
-    // B. Cloud Sync (Forward the request)
+    // B. Sync ONLY if we are Local (Cloud URL is set)
     if (CLOUD_API_URL) {
         axios.post(`${CLOUD_API_URL}/api/add-device`, req.body)
-             .catch(e => console.error(`⚠️ Cloud Sync Add Failed: ${e.message}`));
+             .catch(e => console.error(`⚠️ Sync Failed: ${e.message}`));
     }
 
-    res.json({ message: "Device Saved (Synced)", device });
+    res.json({ message: "Saved", device });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 3. REMOVE DEVICE (Master Sync)
+// 3. REMOVE DEVICE (With Loop Protection)
 app.delete('/api/remove-device/:ip', async (req, res) => {
     const { ip } = req.params;
     try {
-        // A. Local Delete
         const result = await Device.findOneAndDelete({ ip: ip });
         
-        // B. Cloud Sync
         if (CLOUD_API_URL) {
             axios.delete(`${CLOUD_API_URL}/api/remove-device/${ip}`)
-                 .catch(e => console.error(`⚠️ Cloud Sync Delete Failed: ${e.message}`));
+                 .catch(e => console.error(`⚠️ Sync Delete Failed: ${e.message}`));
         }
 
-        if (result) res.json({ message: `Device ${ip} removed (Synced)` });
-        else res.status(404).json({ message: "Device not found locally" });
+        if (result) res.json({ message: `Removed ${ip}` });
+        else res.status(404).json({ message: "Not found" });
 
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -122,17 +129,16 @@ app.get('/api/status', async (req, res) => {
     res.json(stats || { download: '--', upload: '--', ping: 0 });
 });
 
-// 7. RESET ALL (Master Sync - Long Timeout)
+// 7. RESET ALL (With Loop Protection)
 app.get('/api/reset-db', async (req, res) => {
     let msg = [];
-    // A. Local Wipe
     try {
         await Device.deleteMany({});
         await SystemStatus.deleteMany({});
-        msg.push("✅ Local Wiped");
-    } catch (e) { msg.push(`❌ Local Err: ${e.message}`); }
+        msg.push(`✅ ${IS_CLOUD ? 'Cloud' : 'Local'} Wiped`);
+    } catch (e) { msg.push(`❌ Error: ${e.message}`); }
 
-    // B. Cloud Wipe (TIMEOUT INCREASED TO 30 SECONDS)
+    // Only trigger remote wipe if we are Local
     if (CLOUD_API_URL) {
         try {
             await axios.get(`${CLOUD_API_URL}/api/reset-db`, { timeout: 30000 });
