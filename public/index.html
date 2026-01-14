@@ -17,7 +17,7 @@
         .card { background: #252525; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
         
         /* LEFT SIDEBAR STACKING FIX */
-        .card-speed { border-top: 3px solid #4db8ff; flex: 0 0 auto; } /* Auto height (fit content) */
+        .card-speed { border-top: 3px solid #4db8ff; flex: 0 0 auto; } /* Auto height */
         .card-cloud { border-top: 3px solid #28a745; flex: 0 0 auto; height: 180px; } /* Fixed height */
         .card-local { border-top: 3px solid #ffc107; flex: 1; min-height: 0; } /* Fills remaining space */
         
@@ -25,8 +25,8 @@
         .card-firewall { border-top: 3px solid #fd7e14; min-height: 160px; flex: 0 0 auto; }
         .card-hardware { border-top: 3px solid #e83e8c; flex: 0 0 auto; } 
         .card-nvr { border-top: 3px solid #6f42c1; flex: 0 0 auto; }      
-        .card-switch { border-top: 3px solid #17a2b8; flex: 1; min-height: 0; } /* Share bottom space */        
-        .card-printer { border-top: 3px solid #0d6efd; flex: 1; min-height: 0; } /* Share bottom space */       
+        .card-switch { border-top: 3px solid #17a2b8; flex: 1; min-height: 0; }     
+        .card-printer { border-top: 3px solid #0d6efd; flex: 1; min-height: 0; }      
 
         /* TEXT & STATS */
         .card h2 { margin: 0 0 10px 0; font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
@@ -122,7 +122,7 @@
             <div id="server-window" class="list-window"></div>
         </div>
         
-        <div class="version-footer">KINGSBURY MONITOR v2.3</div>
+        <div class="version-footer">KINGSBURY MONITOR v2.4</div>
     </div>
 
     <div id="main-content">
@@ -262,8 +262,16 @@
                 if (window.getComputedStyle(document.getElementById('map-wrapper')).display !== 'none') {
                     devicesLayer.clearLayers();
                     devices.forEach(d => {
-                        if (d.floor_id === maps[currentMapIndex].id && d.type === 'switch') {
-                            let color = d.status === 'online' ? '#00d26a' : (d.status === 'amber' ? '#ffc107' : '#f8312f');
+                        // FIX: Crash Protection (Check for coordinates existence)
+                        if (!d.map_coordinates || typeof d.map_coordinates.x === 'undefined') return;
+
+                        // FIX: Show ALL device types, not just 'switch'
+                        if (d.floor_id === maps[currentMapIndex].id) {
+                            
+                            let color = '#f8312f'; // Default Red
+                            if (d.status === 'online') color = '#00d26a'; // Green
+                            else if (d.status === 'amber') color = '#ffc107'; // Amber
+
                             L.circleMarker([d.map_coordinates.y, d.map_coordinates.x], {
                                 color: 'transparent', fillColor: color, fillOpacity: 0.9, radius: 8
                             }).addTo(devicesLayer).bindTooltip(d.name, {permanent: false, direction: 'top'});
