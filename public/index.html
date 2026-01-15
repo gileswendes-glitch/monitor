@@ -101,11 +101,25 @@
         .leaflet-popup-content { margin: 10px; line-height: 1.4; }
         .leaflet-popup-close-button { color: #888 !important; }
 
+        /* --- MOBILE LAYOUT (<900px) --- */
         @media screen and (max-width: 900px) {
-            body { flex-direction: column; overflow-y: auto; height: auto; }
+            body { flex-direction: column; overflow-y: auto; height: auto; padding-bottom: 50vh; }
             .sidebar { width: 100%; height: auto; box-shadow: none; padding: 15px; box-sizing: border-box; order: 2; overflow-y: visible; }
+            
             #main-content { order: 1; flex-grow: 0; }
-            #map-wrapper { display: none; }
+            
+            #map-wrapper { 
+                display: block !important; 
+                position: fixed; 
+                bottom: 0; 
+                left: 0; 
+                width: 100%; 
+                height: 50vh; 
+                z-index: 4000; 
+                border-top: 4px solid #333; 
+                background: #121212;
+            }
+            
             .list-window { max-height: 250px; }
         }
     </style>
@@ -134,7 +148,7 @@
             <h2>NVRs & Cameras</h2>
             <div id="nvr-list" class="list-window"></div>
         </div>
-        <div class="version-footer">KINGSBURY MONITOR v5.0 (Firewall Bars)</div>
+        <div class="version-footer">KINGSBURY MONITOR v5.0 (Mobile)</div>
     </div>
 
     <div id="main-content">
@@ -320,13 +334,16 @@
 
             try {
                 const res = await fetch('/api/devices');
-                const devices = await res.json();
+                let devices = await res.json();
+                
+                // 1. GHOST FILTER: Hide devices with no name immediately (Cleans "Unknown")
+                devices = devices.filter(d => d.name && d.name !== 'undefined');
+
+                // 2. SAFE SORT
+                devices.sort((a, b) => a.name.localeCompare(b.name));
                 
                 let cloudH='', serverH='', hardwareH='', nvrH='', switchH='', prtH='', telH='', wapH='', accessH='', cctvH='';
                 let firewallHTML = '';
-
-                // FIXED: SAFE SORT (Prevents crash if name is undefined)
-                devices.sort((a, b) => (a.name || 'Unknown').localeCompare(b.name || 'Unknown'));
 
                 // 24 Hour Monitor Logic
                 const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -335,7 +352,7 @@
                     let statusClass = d.status === 'online' ? 'online' : (d.status === 'amber' ? 'amber' : 'offline');
                     let staleIcon = '';
 
-                    // RESTORED: 10 Minute Warning (User Requested)
+                    // RESTORED: 10 Minute Warning
                     if (d.last_seen) {
                         const timeSince = Date.now() - new Date(d.last_seen).getTime();
                         if (timeSince > 600000) { 
@@ -351,8 +368,8 @@
                         }
                     }
 
-                    // FIXED: SAFE NAME
-                    const dName = d.name || 'Unknown Device';
+                    // FIXED: Name is now guaranteed by filter, but kept safe just in case
+                    const dName = d.name;
 
                     // Generic Item
                     let itemHTML = `<div class="service-item"><span>${dName}</span><div class="status-dot ${statusClass}"></div></div>`;
