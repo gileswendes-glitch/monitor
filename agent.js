@@ -4,257 +4,301 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const ping = require('ping');
 const axios = require('axios');
 const snmp = require('net-snmp');
-const { performance } = require('perf_hooks');
+const dns = require('dns').promises; 
 
-// CONFIG
-const LOCAL_API_URL = process.env.LOCAL_API_URL || 'http://localhost:3000/api';
+// =================================================================
+// 🔧 CONFIGURATION
+// =================================================================
+const LOCAL_API_URL = 'http://172.16.211.117:3000/api'; 
 const CLOUD_API_URL = process.env.CLOUD_API_URL || ''; 
+const BATCH_SIZE = 50; 
+// =================================================================
 
-// CLIENTS
 const localClient = axios.create({ timeout: 5000, proxy: false });
 const cloudClient = axios.create({ timeout: 10000, proxy: false });
 
-console.log(`🤖 Agent Started v6.1 (NVR & Printers Tuned)`);
-console.log(`📍 Local Target: ${LOCAL_API_URL}`);
-if (CLOUD_API_URL) console.log(`☁️ Cloud Sync:  ${CLOUD_API_URL}`);
+console.log(`\n=================================================`);
+console.log(`🤖 AGENT v23.0 (SAFE DATA PARSING + MERGE SUPPORT)`);
+console.log(`📍 DB Target: ${LOCAL_API_URL}`);
+console.log(`=================================================\n`);
 
-// --- HELPER: REPORT STATUS ---
+function log(msg) { console.log(`[${new Date().toLocaleTimeString()}] ${msg}`); }
+function logError(msg) { console.error(`[${new Date().toLocaleTimeString()}] ❌ ${msg}`); }
+
+// --- SAFE SESSION ---
+function createSafeSession(ip, community, options) {
+    try {
+        const session = snmp.createSession(ip, community, {
+            timeout: 10000,
+            retries: 1,    
+            ...options
+        });
+        const originalClose = session.close.bind(session);
+        let closed = false;
+        session.close = () => { if(!closed) { closed=true; try{originalClose();}catch(e){} } };
+        return session;
+    } catch (e) { return null; }
+}
+
 async function reportStatus(ip, status, details) {
     const payload = { ip, status, details };
-    try { await localClient.post(`${LOCAL_API_URL}/update-status`, payload); } catch (e) {}
-    if (CLOUD_API_URL) {
-        try { await cloudClient.post(`${CLOUD_API_URL}/update-status`, payload); } catch (e) {}
-    }
+    try { await localClient.post(`${LOCAL_API_URL}/update-status`, payload); } 
+    catch (e) { }
+    if (CLOUD_API_URL) try { await cloudClient.post(`${CLOUD_API_URL}/update-status`, payload); } catch (e) {}
 }
 
-// --- HELPER: SAVE FINGERPRINT ---
-async function saveFingerprint(device, signature) {
-    const payload = {
-        name: device.name, ip: device.ip, type: device.type,
-        floor_id: device.floor_id, map_coordinates: device.map_coordinates,
-        details: { ...(device.details || {}), signature: signature }
-    };
-    try { await localClient.post(`${LOCAL_API_URL}/add-device`, payload); } catch (e) {}
+async function resolveIP(input) {
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(input)) return input;
+    try { const l = await dns.lookup(input); return l.address; } catch (e) { return input; }
 }
 
-// --- HELPER: FORMAT UPTIME ---
 function formatUptime(ticks) {
     if (!ticks) return "N/A";
     const totalSeconds = ticks / 100;
     const days = Math.floor(totalSeconds / (3600 * 24));
     const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    return `${days}d ${hours}h ${minutes}m`;
+    return `${days}d ${hours}h`;
 }
 
-// --- 1. NVR CHECKER (Specific v2c Fix) ---
-function checkNVR(ip) {
+// =================================================================
+// 🧠 1. WINDOWS SERVER (Fixed Data Types)
+// =================================================================
+function checkWindowsServer(ip) {
     return new Promise((resolve) => {
-        // FORCE SNMP v2c (Crucial for your NVRs)
-        const session = snmp.createSession(ip, "public", { 
-            timeout: 3000, 
-            retries: 1,
-            version: snmp.Version2c 
-        });
+        const session = createSafeSession(ip, "public", { version: snmp.Version1 });
+        if(!session) return resolve(null);
 
-        const oids = ['1.3.6.1.2.1.1.3.0', '1.3.6.1.2.1.1.5.0']; // Uptime, Name
+        // Init to NULL so we know if data is missing vs 0
+        let stats = { cpu: null, ram: null, disk: null, uptime: "" };
 
-        session.get(oids, (error, varbinds) => {
-            session.close();
-            if (error) {
-                // If SNMP fails, try Ping as last resort
-                return resolve(null);
-            }
+        session.get(["1.3.6.1.2.1.1.3.0"], (err, vbs) => {
+            if (err) { session.close(); return resolve(null); } 
+            stats.uptime = formatUptime(vbs[0].value);
 
-            const uptime = formatUptime(varbinds[0].value);
-            let name = !snmp.isVarbindError(varbinds[1]) ? varbinds[1].value.toString() : "";
-            
-            // Fallback if name is empty (common on generic NVRs)
-            if (!name || name.length < 2) name = "NVR (Active)";
-
-            resolve({ 
-                status: 'online', 
-                details: { 
-                    uptime: uptime, 
-                    sysName: name, 
-                    note: "Recording" 
+            session.subtree("1.3.6.1.2.1.25.3.3.1.2", (varbinds) => {
+                if (varbinds.length > 0) {
+                    let total = varbinds.reduce((sum, vb) => sum + vb.value, 0);
+                    stats.cpu = Math.round(total / varbinds.length);
                 }
-            });
+                session.table("1.3.6.1.2.1.25.2.3.1", 20, (err2, table) => {
+                    session.close();
+                    if (!err2) {
+                        const rows = Object.values(table);
+                        for (const entry of rows) {
+                            const type = entry[2] ? entry[2].toString() : "";
+                            const descr = entry[3] ? entry[3].toString().toLowerCase() : "";
+                            // Safe Parse: Ensure we handle Strings/Numbers correctly
+                            const size = Number(entry[5]);
+                            const used = Number(entry[6]);
+                            
+                            if (!size || isNaN(size) || size <= 0) continue;
+                            
+                            const pct = Math.round((used / size) * 100);
+                            
+                            if (descr.includes("physical memory") || type.endsWith(".1.3.6.1.2.1.25.2.1.2")) stats.ram = pct;
+                            if (descr.includes("c:") || (descr.includes("fixed") && descr.includes("disk"))) {
+                                if(descr.includes("c:") || stats.disk === null) stats.disk = pct;
+                            }
+                        }
+                    }
+                    // Only send what we found. Nulls will be handled by Index.html logic.
+                    log(`✅ [WIN] ${ip} CPU:${stats.cpu}% RAM:${stats.ram}%`);
+                    resolve({ status: 'online', details: stats });
+                });
+            }, (err) => { session.close(); resolve(null); });
         });
-        session.on('error', () => resolve(null));
+        session.on('error', () => session.close());
     });
 }
 
-// --- 2. PRINTER CHECKER (Konica/HP Logic) ---
+// =================================================================
+// 🖨️ 2. PRINTERS
+// =================================================================
 function checkPrinter(ip) {
     return new Promise((resolve) => {
-        const session = snmp.createSession(ip, "public", { timeout: 3000, retries: 1 });
-        const oids = ["1.3.6.1.2.1.25.3.2.1.5.1", "1.3.6.1.2.1.1.1.0"];
+        const session = createSafeSession(ip, "public", { version: snmp.Version1 });
+        if(!session) return resolve(null);
 
-        session.get(oids, (error, varbinds) => {
-            if (error) {
-                session.close();
-                return resolve({ status: 'error', details: { error: "SNMP No Reply" } });
-            }
-            const statusCode = !snmp.isVarbindError(varbinds[0]) ? varbinds[0].value : 0;
-            const sysDesc = !snmp.isVarbindError(varbinds[1]) ? varbinds[1].value.toString() : "";
+        const oidAlerts = "1.3.6.1.2.1.43.18.1.1.8";
+        let alerts = [];
 
-            // DETECT KONICA vs HP
-            if (sysDesc.toLowerCase().includes('konica') || sysDesc.toLowerCase().includes('minolta')) {
-                const alertOid = "1.3.6.1.2.1.43.18.1.1.8"; 
-                let alertMessages = [];
-                session.subtree(alertOid, 
-                    (alertVarbinds) => { alertVarbinds.forEach(vb => { if (!snmp.isVarbindError(vb)) alertMessages.push(vb.value.toString()); }); }, 
-                    (err) => {
-                        session.close();
-                        const finalText = alertMessages.length > 0 ? alertMessages.join("; ") : "Ready";
-                        resolve(analyzePrinterData(statusCode, finalText));
-                    }
-                );
-            } else {
-                session.get(["1.3.6.1.2.1.43.16.5.1.2.1.1"], (err2, vbs2) => {
-                    session.close();
-                    let hpText = "Ready";
-                    if (!err2 && vbs2 && !snmp.isVarbindError(vbs2[0])) hpText = vbs2[0].value.toString();
-                    resolve(analyzePrinterData(statusCode, hpText));
-                });
-            }
+        session.subtree(oidAlerts, (vbs) => {
+            vbs.forEach(vb => { if(!snmp.isVarbindError(vb)) alerts.push(vb.value.toString()); });
+        }, (err) => {
+            session.close();
+            if (alerts.length > 0) resolve({ status: 'amber', details: { note: alerts.join(", ") } });
+            else resolve({ status: 'online', details: { note: "Ready" } });
         });
-        session.on('error', () => { /* Handled */ });
+        session.on('error', () => { session.close(); resolve({status:'online', details:{note:"Ready"}}); });
     });
 }
 
-function analyzePrinterData(statusCode, text) {
-    let finalStatus = 'online';
-    const lowerText = text.toLowerCase();
-    const badWords = ['low', 'empty', 'jam', 'replace', 'waste', 'error', 'load', 'service', 'open', 'size/media', 'warning', 'no paper', 'toner'];
-    const isSleep = ['sleep', 'power save', 'warming', 'standby', 'ready', 'printing'].some(w => lowerText.includes(w));
-
-    if (badWords.some(w => lowerText.includes(w))) finalStatus = 'amber';
-    else if (isSleep) finalStatus = 'online';
-    else if (statusCode === 5) finalStatus = 'offline';
-    else if (statusCode === 3) finalStatus = 'amber';
-
-    return { status: finalStatus, details: { note: text } };
-}
-
-// --- 3. GENERIC SNMP (Switches/Firewalls) ---
-function checkSnmpGeneric(ip, community) {
+// =================================================================
+// 💾 3. HP SAN
+// =================================================================
+function checkHpSan(ip) {
     return new Promise((resolve) => {
-        try {
-            const session = snmp.createSession(ip, community || 'public', { timeout: 2000, retries: 1 });
-            const oids = ['1.3.6.1.2.1.1.3.0', '1.3.6.1.2.1.1.5.0', '1.3.6.1.2.1.1.1.0']; 
-            session.get(oids, (error, varbinds) => {
+        const session = createSafeSession(ip, "public", { version: snmp.Version2c });
+        if(!session) return resolve(null);
+
+        let maxHealth = 0;
+        const oidHealth = "1.3.6.1.3.94.1.6.1.6"; 
+        const oidName = "1.3.6.1.2.1.1.5.0";
+
+        session.subtree(oidHealth, (vbs) => {
+            vbs.forEach(vb => { if(!snmp.isVarbindError(vb) && vb.value > maxHealth) maxHealth = vb.value; });
+        }, (err) => {
+            if (err) { session.close(); return resolve(null); }
+            session.get([oidName], (e2, vbs2) => {
                 session.close();
-                if (error || snmp.isVarbindError(varbinds[0])) return resolve(null);
-                const safelyGet = (index) => (varbinds[index] && !snmp.isVarbindError(varbinds[index])) ? varbinds[index].value.toString() : "N/A";
-                resolve({ 
-                    online: true, uptime: formatUptime(varbinds[0].value), 
-                    sysName: safelyGet(1), desc: safelyGet(2)
-                });
+                const name = (!e2 && !snmp.isVarbindError(vbs2[0])) ? vbs2[0].value.toString() : "HP SAN";
+                let msg = (maxHealth === 3 || maxHealth === 2) ? "Health: OK" : (maxHealth >= 4 ? "Health: Alert" : "Health: Unknown");
+                let status = (maxHealth >= 4) ? 'amber' : 'online';
+                resolve({ status, details: { sysName: name, note: msg } });
             });
-            session.on('error', () => resolve(null));
-        } catch (e) { resolve(null); }
+        });
+        session.on('error', () => { session.close(); resolve(null); });
     });
 }
 
-// --- 4. WEB CHECKER ---
+// =================================================================
+// 📶 4. CAMBIUM WAP
+// =================================================================
+function checkCambium(ip) {
+    return new Promise((resolve) => {
+        const session = createSafeSession(ip, "public", { version: snmp.Version2c });
+        if(!session) return resolve(null);
+
+        let totalClients = 0;
+        const oidClients = "1.3.6.1.4.1.17713.22.1.4.1.7"; 
+        const oidName = "1.3.6.1.2.1.1.5.0";
+
+        session.subtree(oidClients, (vbs) => {
+            vbs.forEach(vb => { if(!snmp.isVarbindError(vb)) totalClients += (parseInt(vb.value) || 0); });
+        }, (err) => {
+            if (err) { session.close(); return resolve(null); }
+            session.get([oidName], (e2, vbs2) => {
+                session.close();
+                const name = (!e2 && !snmp.isVarbindError(vbs2[0])) ? vbs2[0].value.toString() : "Cambium AP";
+                resolve({ status: 'online', details: { sysName: name, note: `${totalClients} Clients` } });
+            });
+        });
+        session.on('error', () => { session.close(); resolve(null); });
+    });
+}
+
+// =================================================================
+// 📹 5. OTHER
+// =================================================================
+function checkNVR(ip) {
+    return new Promise((resolve) => {
+        const session = createSafeSession(ip, "public", { version: snmp.Version2c });
+        session.get(['1.3.6.1.2.1.1.3.0', '1.3.6.1.2.1.1.5.0'], (err, vbs) => {
+            session.close();
+            if(err) return resolve(null);
+            resolve({ status: 'online', details: { uptime: formatUptime(vbs[0].value), sysName: vbs[1].value.toString(), note: "Recording" } });
+        });
+        session.on('error', () => session.close());
+    });
+}
+
 async function checkWebService(target) {
-    let url = target.ip.trim();
-    if (!url.startsWith('http')) url = `https://${url}`; 
     try {
         const start = performance.now();
-        const res = await axios.get(url, { timeout: 8000 });
-        const latency = Math.floor(performance.now() - start);
-        if (res.status < 200 || res.status >= 300) throw new Error(`HTTP Error ${res.status}`);
+        await axios.get(target.ip.startsWith('http') ? target.ip : `http://${target.ip}`, { timeout: 5000 });
+        const lat = Math.floor(performance.now() - start);
+        if (!target.details?.signature) { await saveFingerprint(target, "Learned"); }
+        return { status: 'online', details: { latency: `${lat}ms` } };
+    } catch (e) { return { status: 'offline', details: { error: "HTTP Error" } }; }
+}
 
-        const html = (typeof res.data === 'string') ? res.data : JSON.stringify(res.data);
-        const titleMatch = html.match(/<title>(.*?)<\/title>/i);
-        const h1Match = html.match(/<h1.*?>(.*?)<\/h1>/i);
-        const pageTitle = titleMatch ? titleMatch[1].trim() : "No Title";
-        const pageH1 = h1Match ? h1Match[1].replace(/<[^>]*>?/gm, '').trim() : "No H1";
-        const currentSignature = `T:${pageTitle}|H:${pageH1}`;
-        const storedSignature = target.details ? target.details.signature : null;
+function checkSnmpGeneric(ip) {
+    return new Promise((resolve) => {
+        const session = createSafeSession(ip, "smoothwallsnmp", { version: snmp.Version1 });
+        session.get(['1.3.6.1.2.1.1.5.0'], (err, vbs) => {
+            session.close();
+            if(err) return resolve(null);
+            resolve({ status: 'online', details: { sysName: vbs[0].value.toString() } });
+        });
+        session.on('error', () => {});
+    });
+}
 
-        if (!storedSignature) {
-            await saveFingerprint(target, currentSignature);
-            return { status: 'online', details: { latency: `${latency}ms`, note: "Signature Learned" } };
-        } 
-        else if (storedSignature !== currentSignature) {
-            return { status: 'amber', details: { latency: `${latency}ms`, error: "Content Changed", diff: `Exp: ${storedSignature.substring(0,20)}...` } };
+function identifyDevice(ip) {
+    return new Promise((resolve) => {
+        const session = createSafeSession(ip, "public", { version: snmp.Version2c });
+        session.get(["1.3.6.1.2.1.1.1.0"], (err, vbs) => {
+            session.close();
+            if(err) return resolve('generic');
+            const desc = vbs[0].value.toString().toLowerCase();
+            if(desc.includes("msa") || desc.includes("hpe")) resolve('san');
+            else if(desc.includes("xv2") || desc.includes("cambium")) resolve('wap');
+            else resolve('generic');
+        });
+        session.on('error', () => session.close());
+    });
+}
+
+// =================================================================
+// 🚀 PROCESSOR
+// =================================================================
+async function processDevice(target) {
+    const rawIP = target.ip || "";
+    if(!rawIP) return;
+    const cleanIP = await resolveIP(rawIP);
+    let status = 'offline'; 
+    let details = {};
+
+    if (target.type === 'server') {
+        const d = await checkWindowsServer(cleanIP);
+        if(d) { status = d.status; details = d.details; }
+        else { 
+            try { if((await ping.promise.probe(cleanIP, {timeout:4})).alive) { status='online'; details={note:"Ping Only (SNMP Fail)"}; } } catch(e){} 
         }
-        return { status: 'online', details: { latency: `${latency}ms`, signature: "Verified" } };
-    } catch (e) {
-        let msg = e.message;
-        if(e.response) msg = `HTTP ${e.response.status}`;
-        return { status: 'offline', details: { error: msg } };
     }
-}
-
-// --- MAIN SCAN LOOP ---
-async function checkNetwork() {
-    console.log(`\n--- Scan: ${new Date().toLocaleTimeString()} ---`);
-    try {
-        const response = await localClient.get(`${LOCAL_API_URL}/devices`);
-        const targets = response.data;
-
-        for (let target of targets) {
-            let status = 'offline';
-            let details = {};
-            const cleanIP = target.ip ? target.ip.trim() : ""; 
-            if (!cleanIP) continue; 
-
-            // ROUTE TO CORRECT CHECKER
-            if (target.type === 'nvr') {
-                const nvrData = await checkNVR(cleanIP);
-                if (nvrData) { 
-                    status = 'online'; details = nvrData.details; 
-                } else {
-                    // NVR Fallback
-                    try { const res = await ping.promise.probe(cleanIP, {timeout:2}); if(res.alive) { status='online'; details={note:"Ping Only (Check SNMP)"}; } } catch(e){}
-                }
-            }
-            else if (target.type === 'printer') {
-                const pRes = await checkPrinter(cleanIP);
-                if (pRes.status !== 'error') { status = pRes.status; details = pRes.details; }
-                else {
-                    try { const res = await ping.promise.probe(cleanIP, {timeout:2}); if(res.alive) { status='online'; details={note:"Ping Only"}; } } catch(e){}
-                }
-            }
-            else if (target.type === 'service') {
-                const res = await checkWebService(target);
-                status = res.status; details = res.details;
-            } 
-            else if (target.type === 'firewall' || target.type === 'switch_hw') {
-                try {
-                    const snmpData = await checkSnmpGeneric(cleanIP, 'smoothwallsnmp'); 
-                    if (snmpData && snmpData.online) { status = 'online'; details = snmpData; } 
-                    else { throw new Error("SNMP Missing"); }
-                } catch (e) {
-                    try { const res = await ping.promise.probe(cleanIP, {timeout:2}); if(res.alive) { status='online'; details={note:"Ping Only"}; } } catch(pingErr) {}
-                }
-            }
-            else { // GENERIC PING
-                try { const res = await ping.promise.probe(cleanIP, {timeout:2}); status = res.alive ? 'online' : 'offline'; } catch (e) {}
-            }
-            await reportStatus(cleanIP, status, details);
+    else {
+        let type = target.type;
+        if(['other','hardware','switch'].includes(type)) {
+            const id = await identifyDevice(cleanIP);
+            if(id !== 'generic') type = id; 
         }
-    } catch (err) { console.error("❌ Scan Loop Error:", err.message); }
+
+        let d = null;
+        if (type === 'san' || target.name.includes('SAN')) d = await checkHpSan(cleanIP);
+        else if (type === 'wap') d = await checkCambium(cleanIP);
+        else if (type === 'nvr') d = await checkNVR(cleanIP);
+        else if (type === 'printer') d = await checkPrinter(cleanIP);
+        else if (type === 'service') d = await checkWebService(target);
+        else if (type === 'firewall') d = await checkSnmpGeneric(cleanIP);
+
+        if (d) { status = d.status; details = d.details; }
+        else {
+            try { if((await ping.promise.probe(cleanIP, {timeout:4})).alive) { status='online'; details={note:"Ping Only"}; } } catch(e){}
+        }
+    }
+    await reportStatus(rawIP, status, details);
 }
 
-async function checkInternetHealth() {
+async function saveFingerprint(device, signature) {
+    const payload = { ...device, details: { ...device.details, signature } };
+    try { await localClient.post(`${LOCAL_API_URL}/add-device`, payload); } catch (e) {}
+}
+
+let isScanning = false;
+async function checkNetwork() {
+    if(isScanning) return console.log("⚠️ Scan in progress...");
+    isScanning = true;
+    console.log(`--- SCAN START: ${new Date().toLocaleTimeString()} ---`);
     try {
-        const res = await ping.promise.probe('8.8.8.8', { timeout: 2 });
-        const payload = { download: "Active", upload: "Active", ping: res.alive ? Math.floor(res.time) : 999 };
-        await localClient.post(`${LOCAL_API_URL}/update-speed`, payload);
-        if (CLOUD_API_URL) await cloudClient.post(`${CLOUD_API_URL}/update-speed`, payload);
-    } catch (err) {}
+        const res = await localClient.get(`${LOCAL_API_URL}/devices`);
+        const targets = res.data;
+        for (let i = 0; i < targets.length; i += BATCH_SIZE) {
+            await Promise.all(targets.slice(i, i + BATCH_SIZE).map(processDevice));
+        }
+    } catch (e) { logError(e.message); }
+    isScanning = false;
+    console.log("--- SCAN END ---");
 }
 
-(async () => {
-    await checkNetwork();
-    await checkInternetHealth();
-})();
-
-setInterval(checkNetwork, 60000); 
-setInterval(checkInternetHealth, 60000);
+(async()=>{ await checkNetwork(); })();
+setInterval(checkNetwork, 60000);
