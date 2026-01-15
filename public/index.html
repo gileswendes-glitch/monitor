@@ -134,7 +134,7 @@
             <h2>NVRs & Cameras</h2>
             <div id="nvr-list" class="list-window"></div>
         </div>
-        <div class="version-footer">KINGSBURY MONITOR v4.9 (Stale Check + Bar Fix)</div>
+        <div class="version-footer">KINGSBURY MONITOR v5.0 (Firewall Bars)</div>
     </div>
 
     <div id="main-content">
@@ -398,19 +398,18 @@
                         hardwareH += itemHTML;
                     }
 
-                    // --- SERVERS (INTELLIGENCE) ---
+                    // --- SERVERS (UPDATED: Uptime in Header) ---
                     else if (d.type === 'server') {
                         let statsHTML = '';
-                        // LOGIC FIX: && instead of || ensures we don't draw 0% bars for missing data
-                        if (d.details && d.details.cpu !== undefined && d.details.cpu !== null) {
-                            // SAFE PARSE
-                            let cpu = parseInt(d.details.cpu || 0);
-                            let ram = parseInt(d.details.ram || 0);
-                            let disk = parseInt(d.details.disk || 0);
+                        let uptimeHTML = '';
 
-                            if(isNaN(cpu)) cpu = 0;
-                            if(isNaN(ram)) ram = 0;
-                            if(isNaN(disk)) disk = 0;
+                        if (d.details && d.details.cpu !== undefined && d.details.cpu !== null) {
+                            let cpu = parseInt(d.details.cpu)||0, ram = parseInt(d.details.ram)||0, disk = parseInt(d.details.disk)||0;
+                            
+                            // Generate Uptime HTML
+                            if(d.details.uptime) {
+                                uptimeHTML = `<span style="font-size:11px; color:#888; font-weight:normal; margin-left:8px;">${d.details.uptime}</span>`;
+                            }
 
                             statsHTML = `
                             <div class="stat-container">
@@ -435,11 +434,14 @@
                             statsHTML = `<div style="font-size:10px; color:#555; margin-top:3px; font-style:italic;">${msg}</div>`;
                         }
 
-                        // FLEX COLUMN LAYOUT
+                        // FLEX COLUMN LAYOUT WITH HEADER UPTIME
                         itemHTML = `
                         <div class="service-item" style="flex-direction:column; align-items:stretch; padding:10px 0;">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="font-weight:600;">${d.name}${staleIcon}</span>
+                                <div style="display:flex; align-items:center;">
+                                    <span style="font-weight:600;">${d.name}${staleIcon}</span>
+                                    ${uptimeHTML}
+                                </div>
                                 <div class="status-dot ${statusClass}"></div>
                             </div>
                             ${statsHTML}
@@ -447,20 +449,42 @@
                         serverH += itemHTML;
                     }
 
+                    // --- FIREWALL (UPDATED) ---
+                    else if (d.type === 'firewall') {
+                        const det = d.details || {};
+                        let statsHTML = '';
+                        
+                        // Check if RAM/Disk data exists to draw bars
+                        if (det.ram !== undefined || det.disk !== undefined) {
+                            let ram = parseInt(det.ram || 0);
+                            let disk = parseInt(det.disk || 0);
+                            
+                            statsHTML = `
+                            <div class="stat-container" style="margin-top: 10px;">
+                                <div class="stat-row">
+                                    <span class="stat-label">RAM</span>
+                                    <div class="stat-track" title="RAM: ${ram}%"><div class="stat-fill fill-ram" style="width:${ram}%"></div></div>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-label">HDD</span>
+                                    <div class="stat-track" title="Disk: ${disk}%"><div class="stat-fill fill-disk" style="width:${disk}%"></div></div>
+                                </div>
+                            </div>`;
+                        }
+
+                        firewallHTML += `<div style="margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
+                            <div class="fw-row"><span class="fw-label">Device Name</span><span class="fw-val">${det.sysName || d.name}</span></div>
+                            <div class="fw-row"><span class="fw-label">Status</span><div class="status-dot ${statusClass}"></div></div>
+                            <div class="fw-row"><span class="fw-label">Uptime</span><span class="fw-val" style="color:#00d26a;">${det.uptime || '--'}</span></div>
+                            ${statsHTML}
+                        </div>`;
+                    }
+
                     else if (d.type === 'service') cloudH += itemHTML;
                     else if (d.type === 'switch' || d.type === 'switch_hw') switchH += itemHTML; 
                     else if (d.type === 'telephone') telH += itemHTML;
                     else if (d.type === 'access_control') accessH += itemHTML;
                     else if (d.type === 'cctv') cctvH += itemHTML;
-                    else if (d.type === 'firewall') {
-                        const det = d.details || {};
-                        let desc = (det.desc || 'No System Info').replace(/^Linux\s+\S+\s+/, ''); 
-                        firewallHTML += `<div style="margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
-                            <div class="fw-row"><span class="fw-label">Device Name</span><span class="fw-val">${det.sysName || d.name}</span></div>
-                            <div class="fw-row"><span class="fw-label">Status</span><div class="status-dot ${statusClass}"></div></div>
-                            <div class="fw-row"><span class="fw-label">Uptime</span><span class="fw-val" style="color:#00d26a;">${det.uptime || '--'}</span></div>
-                            <div class="fw-desc">${desc}</div></div>`;
-                    }
                 });
 
                 document.getElementById('cloud-window').innerHTML = cloudH;
