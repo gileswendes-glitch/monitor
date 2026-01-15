@@ -2,6 +2,8 @@
 <html>
 <head>
     <title>KHS IT Monitor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
@@ -103,11 +105,28 @@
 
         /* --- MOBILE LAYOUT (<900px) --- */
         @media screen and (max-width: 900px) {
+            /* 1. Use vertical scrolling for the whole page */
             body { flex-direction: column; overflow-y: auto; height: auto; padding-bottom: 50vh; }
-            .sidebar { width: 100%; height: auto; box-shadow: none; padding: 15px; box-sizing: border-box; order: 2; overflow-y: visible; }
             
-            #main-content { order: 1; flex-grow: 0; }
+            /* 2. Sidebars take full width and stack */
+            .sidebar { 
+                width: 100%; 
+                height: auto; 
+                box-shadow: none; 
+                padding: 10px;
+                box-sizing: border-box; 
+                order: 2; /* Put lists AFTER header */
+                overflow-y: visible; 
+            }
             
+            /* 3. Main content holds the map */
+            #main-content { 
+                order: 1; 
+                flex-grow: 0; 
+                width: 100%;
+            }
+            
+            /* 4. MAP: FIXED AT BOTTOM 50% */
             #map-wrapper { 
                 display: block !important; 
                 position: fixed; 
@@ -120,7 +139,11 @@
                 background: #121212;
             }
             
-            .list-window { max-height: 250px; }
+            /* 5. Allow lists to expand fully (scroll body instead of tiny windows) */
+            .list-window { max-height: none; }
+            
+            .page-header { padding: 10px 15px; font-size: 16px; }
+            .badge { display: none; }
         }
     </style>
 </head>
@@ -148,7 +171,7 @@
             <h2>NVRs & Cameras</h2>
             <div id="nvr-list" class="list-window"></div>
         </div>
-        <div class="version-footer">KINGSBURY MONITOR v5.0 (Mobile)</div>
+        <div class="version-footer">KINGSBURY MONITOR v5.0 (Mobile Ready)</div>
     </div>
 
     <div id="main-content">
@@ -317,7 +340,7 @@
                     </div>`;
                 }
             }
-            // SAFE NAME to prevent crash
+            // CRASH PREVENTION: Safe Name fallback
             const safeName = d.name || 'Unknown';
             return `<div style="text-align:center; min-width: 140px;">
                     <div style="font-weight:700; font-size:14px; margin-bottom:4px; color:#fff;">${safeName}</div>
@@ -340,7 +363,7 @@
                 devices = devices.filter(d => d.name && d.name !== 'undefined');
 
                 // 2. SAFE SORT
-                devices.sort((a, b) => a.name.localeCompare(b.name));
+                devices.sort((a, b) => (a.name || 'Unknown').localeCompare(b.name || 'Unknown'));
                 
                 let cloudH='', serverH='', hardwareH='', nvrH='', switchH='', prtH='', telH='', wapH='', accessH='', cctvH='';
                 let firewallHTML = '';
@@ -369,7 +392,7 @@
                     }
 
                     // FIXED: Name is now guaranteed by filter, but kept safe just in case
-                    const dName = d.name;
+                    const dName = d.name || 'Unknown Device';
 
                     // Generic Item
                     let itemHTML = `<div class="service-item"><span>${dName}</span><div class="status-dot ${statusClass}"></div></div>`;
