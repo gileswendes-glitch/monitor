@@ -1,38 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>KHS IT School Monitor</title>
+    <title>KHS IT Monitor</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        /* --- CORE LAYOUT --- */
         body { margin: 0; background: #121212; display: flex; font-family: 'Inter', 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; color: #e0e0e0; }
-        
-        /* SIDEBARS */
-        .sidebar { 
-            width: 320px; 
-            background: #1e1e1e; 
-            display: flex; 
-            flex-direction: column; 
-            padding: 25px; 
-            box-shadow: 0 0 30px rgba(0,0,0,0.5); 
-            z-index: 2000; 
-            overflow-y: auto; 
-            /* HIDE SCROLLBARS (Firefox) */
-            scrollbar-width: none; 
-            -ms-overflow-style: none; 
-        }
-        /* HIDE SCROLLBARS (Chrome/Safari) */
+        .sidebar { width: 320px; background: #1e1e1e; display: flex; flex-direction: column; padding: 25px; box-shadow: 0 0 30px rgba(0,0,0,0.5); z-index: 2000; overflow-y: auto; scrollbar-width: none; }
         .sidebar::-webkit-scrollbar { display: none; }
-
         #sidebar-left { border-right: 1px solid #333; }
         #sidebar-right { border-left: 1px solid #333; }
         #main-content { flex-grow: 1; display: flex; flex-direction: column; background: #000; }
 
-        /* --- CARDS --- */
         .card { background: #252525; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; flex-shrink: 0; }
         
-        /* COLOR STRIPES */
         .card-cloud { border-top: 3px solid #28a745; min-height: 100px; }
         .card-local { border-top: 3px solid #ffc107; }
         .card-firewall { border-top: 3px solid #fd7e14; }
@@ -45,35 +26,38 @@
         .card-access { border-top: 3px solid #9c27b0; }
         .card-cctv { border-top: 3px solid #f44336; }
 
-        /* HEADERS & STATS */
         .card h2 { margin: 0 0 10px 0; font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
         .big-stat { font-size: 48px; font-weight: 300; color: #fff; letter-spacing: -2px; line-height: 1; }
         .unit { font-size: 13px; color: #666; font-weight: 500; margin-top: 5px; display: block; }
         
-        /* LIST WINDOWS (The scrolling parts) */
-        .list-window { 
-            overflow-y: auto; 
-            padding-right: 5px; 
-            max-height: 320px; 
-            min-height: 30px; 
-            position: relative;
-            /* HIDE SCROLLBARS (Firefox) */
-            scrollbar-width: none; 
-            -ms-overflow-style: none;
-        }
-        
-        /* HIDE SCROLLBARS (Chrome/Safari) */
+        .list-window { overflow-y: auto; padding-right: 5px; max-height: 320px; min-height: 30px; position: relative; scrollbar-width: none; }
         .list-window::-webkit-scrollbar { display: none; }
 
-        /* LIST ITEMS */
-        .service-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #333; font-size: 13px; color: #ccc; }
+        .service-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #333; font-size: 13px; color: #ccc; }
         .service-sub { font-size: 11px; color: #777; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
         
-        /* STATUS DOTS */
         .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
         .online { background: #00d26a; box-shadow: 0 0 8px rgba(0, 210, 106, 0.4); }
         .amber { background: #ffc107; box-shadow: 0 0 8px rgba(255, 193, 7, 0.6); animation: pulse-amber 2s infinite; }
         .offline { background: #f8312f; box-shadow: 0 0 10px rgba(248, 49, 47, 0.6); animation: flash-red 0.8s infinite alternate; }
+
+        /* 24H MONITOR FLASH */
+        @keyframes flash-green-amber {
+            0% { background-color: #00d26a; box-shadow: 0 0 8px #00d26a; }
+            50% { background-color: #ffc107; box-shadow: 0 0 8px #ffc107; }
+            100% { background-color: #00d26a; box-shadow: 0 0 8px #00d26a; }
+        }
+        .flash-monitor { animation: flash-green-amber 2s infinite; }
+
+        /* --- SERVER STATS BARS --- */
+        .stat-container { margin-top: 6px; width: 100%; }
+        .stat-row { display: flex; align-items: center; margin-bottom: 3px; }
+        .stat-label { font-size: 10px; color: #888; width: 30px; }
+        .stat-track { flex: 1; background: #333; height: 6px; border-radius: 3px; overflow: hidden; position: relative; }
+        .stat-fill { height: 100%; width: 0%; transition: width 0.5s ease; border-radius: 3px; }
+        .fill-cpu { background: #3498db; box-shadow: 0 0 5px rgba(52, 152, 219, 0.4); } 
+        .fill-ram { background: #9b59b6; box-shadow: 0 0 5px rgba(155, 89, 182, 0.4); } 
+        .fill-disk { background: #f1c40f; box-shadow: 0 0 5px rgba(241, 196, 15, 0.4); } 
         
         /* FIREWALL DATA */
         .fw-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; border-bottom: 1px solid #333; padding-bottom: 4px; }
@@ -150,7 +134,7 @@
             <h2>NVRs & Cameras</h2>
             <div id="nvr-list" class="list-window"></div>
         </div>
-        <div class="version-footer">KINGSBURY MONITOR v3.3</div>
+        <div class="version-footer">KINGSBURY MONITOR v4.9 (Stale Check + Bar Fix)</div>
     </div>
 
     <div id="main-content">
@@ -308,6 +292,16 @@
                 if(d.details.note) info = `<div style="margin-top:6px; font-style:italic; color:#ddd; font-weight:500;">"${d.details.note}"</div>`;
                 else if(d.details.error) info = `<div style="margin-top:6px; color:#ff6b6b; font-weight:bold;">⚠️ ${d.details.error}</div>`;
                 if(d.details.uptime) info += `<div style="margin-top:4px; font-size:10px; color:#aaa;">Uptime: ${d.details.uptime}</div>`;
+                
+                // Add mini stats to popup too
+                if(d.type === 'server' && (d.details.cpu !== undefined || d.details.cpu !== null)) {
+                    let cpu = parseInt(d.details.cpu || 0);
+                    let ram = parseInt(d.details.ram || 0);
+                    let disk = parseInt(d.details.disk || 0);
+                    info += `<div style="margin-top:8px; border-top:1px solid #444; padding-top:4px; font-size:10px; color:#ccc;">
+                        CPU: ${cpu}% | RAM: ${ram}% | C: ${disk}%
+                    </div>`;
+                }
             }
             return `<div style="text-align:center; min-width: 140px;">
                     <div style="font-weight:700; font-size:14px; margin-bottom:4px; color:#fff;">${d.name}</div>
@@ -331,10 +325,33 @@
 
                 devices.sort((a, b) => a.name.localeCompare(b.name));
 
+                // 24 Hour Monitor Logic
+                const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
                 devices.forEach(d => {
                     let statusClass = d.status === 'online' ? 'online' : (d.status === 'amber' ? 'amber' : 'offline');
+                    let staleIcon = '';
+
+                    // 1. CHECK IF STALE (Missing > 10 mins)
+                    if (d.last_seen) {
+                        const timeSince = Date.now() - new Date(d.last_seen).getTime();
+                        if (timeSince > 600000) { // 10 minutes
+                            staleIcon = '<span title="Data >10m old" style="margin-left:5px; font-size:12px;">⚠️</span>';
+                        }
+                    }
+
+                    // 2. CHECK IF RECOVERED IN LAST 24H (Flash)
+                    if (d.type !== 'printer' && d.status === 'online' && d.last_issue) {
+                        const lastIssueTime = new Date(d.last_issue);
+                        if (lastIssueTime > oneDayAgo) {
+                            statusClass = 'flash-monitor'; 
+                        }
+                    }
+
+                    // Generic Item
                     let itemHTML = `<div class="service-item"><span>${d.name}</span><div class="status-dot ${statusClass}"></div></div>`;
 
+                    // --- PRINTERS ---
                     if (d.type === 'printer') {
                         let note = (d.details && d.details.note) ? d.details.note : '';
                         let subHTML = '';
@@ -343,26 +360,96 @@
                             let noteColor = d.status === 'amber' ? '#ffc107' : (d.status === 'offline' ? '#f8312f' : '#777');
                             subHTML = `<div class="service-sub" style="color:${noteColor}">${note}</div>`;
                         }
-                        itemHTML = `<div class="service-item"><div style="display:flex; flex-direction:column; overflow:hidden;"><span>${d.name}</span>${subHTML}</div><div class="status-dot ${statusClass}"></div></div>`;
+                        itemHTML = `<div class="service-item"><div style="display:flex; flex-direction:column; overflow:hidden;"><span>${d.name}${staleIcon}</span>${subHTML}</div><div class="status-dot ${statusClass}"></div></div>`;
+                        prtH += itemHTML;
                     }
 
-                    if (d.type === 'nvr') {
+                    // --- NVRs ---
+                    else if (d.type === 'nvr') {
                         let note = d.details && d.details.note ? d.details.note : '';
                         let uptime = d.details && d.details.uptime ? d.details.uptime : '';
                         let text = note; 
                         if(uptime) text += (text ? ` • ` : ``) + `${uptime}`;
                         let subHTML = text ? `<div class="service-sub" style="color:#aaa">${text}</div>` : '';
-                        itemHTML = `<div class="service-item"><div style="display:flex; flex-direction:column; overflow:hidden;"><span>${d.name}</span>${subHTML}</div><div class="status-dot ${statusClass}"></div></div>`;
+                        itemHTML = `<div class="service-item"><div style="display:flex; flex-direction:column; overflow:hidden;"><span>${d.name}${staleIcon}</span>${subHTML}</div><div class="status-dot ${statusClass}"></div></div>`;
+                        nvrH += itemHTML;
                     }
 
-                    if (d.type === 'service') cloudH += itemHTML;
-                    else if (d.type === 'server') serverH += itemHTML;
-                    else if (d.type === 'hardware') hardwareH += itemHTML;
-                    else if (d.type === 'nvr') nvrH += itemHTML;
+                    // --- WAPs (Wireless APs) ---
+                    else if (d.type === 'wap') {
+                        let note = d.details && d.details.note ? d.details.note : '';
+                        // Highlight Clients
+                        let subHTML = note ? `<div class="service-sub" style="color:#3498db; font-weight:600;">${note}</div>` : '';
+                        itemHTML = `<div class="service-item"><div style="display:flex; flex-direction:column; overflow:hidden;"><span>${d.name}${staleIcon}</span>${subHTML}</div><div class="status-dot ${statusClass}"></div></div>`;
+                        wapH += itemHTML;
+                    }
+
+                    // --- HARDWARE / SAN / STORAGE ---
+                    else if (d.type === 'hardware' || d.type === 'storage' || d.type === 'san') {
+                        let note = d.details && d.details.note ? d.details.note : '';
+                        let noteColor = '#aaa';
+                        // Color Code SAN Health
+                        if(note.toLowerCase().includes('failed') || note.toLowerCase().includes('critical')) noteColor = '#f8312f';
+                        else if(note.toLowerCase().includes('degraded') || note.toLowerCase().includes('warning')) noteColor = '#ffc107';
+                        else if(note.toLowerCase().includes('ok')) noteColor = '#00d26a';
+
+                        let subHTML = note ? `<div class="service-sub" style="color:${noteColor}; font-weight:500;">${note}</div>` : '';
+                        itemHTML = `<div class="service-item"><div style="display:flex; flex-direction:column; overflow:hidden;"><span>${d.name}${staleIcon}</span>${subHTML}</div><div class="status-dot ${statusClass}"></div></div>`;
+                        hardwareH += itemHTML;
+                    }
+
+                    // --- SERVERS (INTELLIGENCE) ---
+                    else if (d.type === 'server') {
+                        let statsHTML = '';
+                        // LOGIC FIX: && instead of || ensures we don't draw 0% bars for missing data
+                        if (d.details && d.details.cpu !== undefined && d.details.cpu !== null) {
+                            // SAFE PARSE
+                            let cpu = parseInt(d.details.cpu || 0);
+                            let ram = parseInt(d.details.ram || 0);
+                            let disk = parseInt(d.details.disk || 0);
+
+                            if(isNaN(cpu)) cpu = 0;
+                            if(isNaN(ram)) ram = 0;
+                            if(isNaN(disk)) disk = 0;
+
+                            statsHTML = `
+                            <div class="stat-container">
+                                <div class="stat-row">
+                                    <span class="stat-label">CPU</span>
+                                    <div class="stat-track" title="CPU: ${cpu}%"><div class="stat-fill fill-cpu" style="width:${cpu}%"></div></div>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-label">RAM</span>
+                                    <div class="stat-track" title="RAM: ${ram}%"><div class="stat-fill fill-ram" style="width:${ram}%"></div></div>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-label">HDD</span>
+                                    <div class="stat-track" title="C: ${disk}%"><div class="stat-fill fill-disk" style="width:${disk}%"></div></div>
+                                </div>
+                            </div>`;
+                        } else {
+                            // FALLBACK: Status Online + No CPU = SNMP Fail
+                            let msg = "Waiting for Agent...";
+                            if(d.status === 'online') msg = "SNMP Unreachable";
+                            else if(d.status === 'offline') msg = "Device Offline";
+                            statsHTML = `<div style="font-size:10px; color:#555; margin-top:3px; font-style:italic;">${msg}</div>`;
+                        }
+
+                        // FLEX COLUMN LAYOUT
+                        itemHTML = `
+                        <div class="service-item" style="flex-direction:column; align-items:stretch; padding:10px 0;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-weight:600;">${d.name}${staleIcon}</span>
+                                <div class="status-dot ${statusClass}"></div>
+                            </div>
+                            ${statsHTML}
+                        </div>`;
+                        serverH += itemHTML;
+                    }
+
+                    else if (d.type === 'service') cloudH += itemHTML;
                     else if (d.type === 'switch' || d.type === 'switch_hw') switchH += itemHTML; 
-                    else if (d.type === 'printer') prtH += itemHTML;
                     else if (d.type === 'telephone') telH += itemHTML;
-                    else if (d.type === 'wap') wapH += itemHTML;
                     else if (d.type === 'access_control') accessH += itemHTML;
                     else if (d.type === 'cctv') cctvH += itemHTML;
                     else if (d.type === 'firewall') {
@@ -398,7 +485,7 @@
                             let iconHTML = null;
                             if (d.type === 'printer') iconHTML = '🖨️';
                             else if (d.type === 'telephone') iconHTML = '📞';
-                            else if (d.type === 'wap') iconHTML = '📶';
+                            else if (d.type === 'wap') iconHTML = '📡'; 
                             else if (d.type === 'access_control') iconHTML = '🔐';
                             else if (d.type === 'cctv') iconHTML = '📹';
                             else if (d.type === 'nvr') iconHTML = '📼';
