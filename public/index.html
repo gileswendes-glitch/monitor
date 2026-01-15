@@ -400,10 +400,19 @@
                     // --- PRINTERS ---
                     if (d.type === 'printer') {
                         let note = (d.details && d.details.note) ? d.details.note : '';
+                        
+                        // OVERRIDE: Sleep = Green
+                        if (note && note.toLowerCase().includes('sleep')) {
+                            statusClass = 'online';
+                        }
+                        
                         let subHTML = '';
                         const skipWords = ['ready', 'online'];
                         if (note && !skipWords.includes(note.toLowerCase())) {
-                            let noteColor = d.status === 'amber' ? '#ffc107' : (d.status === 'offline' ? '#f8312f' : '#777');
+                            let noteColor = '#777';
+                            if (statusClass === 'amber') noteColor = '#ffc107';
+                            else if (statusClass === 'offline') noteColor = '#f8312f';
+
                             subHTML = `<div class="service-sub" style="color:${noteColor}">${note}</div>`;
                         }
                         itemHTML = `<div class="service-item"><div style="display:flex; flex-direction:column; overflow:hidden;"><span>${dName}${staleIcon}</span>${subHTML}</div><div class="status-dot ${statusClass}"></div></div>`;
