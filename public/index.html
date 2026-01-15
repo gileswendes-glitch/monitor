@@ -303,8 +303,10 @@
                     </div>`;
                 }
             }
+            // SAFE NAME to prevent crash
+            const safeName = d.name || 'Unknown';
             return `<div style="text-align:center; min-width: 140px;">
-                    <div style="font-weight:700; font-size:14px; margin-bottom:4px; color:#fff;">${d.name || 'Unknown'}</div>
+                    <div style="font-weight:700; font-size:14px; margin-bottom:4px; color:#fff;">${safeName}</div>
                     <div style="font-size:11px; color:#aaa; margin-bottom:6px;">${d.ip}</div>
                     <div style="background:${statusColor}; color:#000; padding:3px 8px; border-radius:4px; display:inline-block; font-weight:700; font-size:11px; text-transform:uppercase;">${d.status}</div>
                     ${info}
@@ -323,7 +325,7 @@
                 let cloudH='', serverH='', hardwareH='', nvrH='', switchH='', prtH='', telH='', wapH='', accessH='', cctvH='';
                 let firewallHTML = '';
 
-                // FIXED: SAFE SORT (Prevents crash on undefined names)
+                // FIXED: SAFE SORT (Prevents crash if name is undefined)
                 devices.sort((a, b) => (a.name || 'Unknown').localeCompare(b.name || 'Unknown'));
 
                 // 24 Hour Monitor Logic
@@ -333,10 +335,10 @@
                     let statusClass = d.status === 'online' ? 'online' : (d.status === 'amber' ? 'amber' : 'offline');
                     let staleIcon = '';
 
-                    // 1. CHECK IF STALE (Missing > 10 mins)
+                    // RESTORED: 10 Minute Warning (User Requested)
                     if (d.last_seen) {
                         const timeSince = Date.now() - new Date(d.last_seen).getTime();
-                        if (timeSince > 600000) { // 10 minutes
+                        if (timeSince > 600000) { 
                             staleIcon = '<span title="Data >10m old" style="margin-left:5px; font-size:12px;">⚠️</span>';
                         }
                     }
@@ -349,7 +351,7 @@
                         }
                     }
 
-                    // SAFETY: Handle missing names to prevent blank entries
+                    // FIXED: SAFE NAME
                     const dName = d.name || 'Unknown Device';
 
                     // Generic Item
