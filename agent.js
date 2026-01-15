@@ -18,14 +18,13 @@ const localClient = axios.create({ timeout: 5000, proxy: false });
 const cloudClient = axios.create({ timeout: 10000, proxy: false });
 
 console.log(`\n=================================================`);
-console.log(`🤖 AGENT v23.0 (SAFE DATA PARSING + MERGE SUPPORT)`);
+console.log(`🤖 AGENT v38.0 (TRUE SYSTEM UPTIME + SMART FORMAT)`);
 console.log(`📍 DB Target: ${LOCAL_API_URL}`);
 console.log(`=================================================\n`);
 
 function log(msg) { console.log(`[${new Date().toLocaleTimeString()}] ${msg}`); }
 function logError(msg) { console.error(`[${new Date().toLocaleTimeString()}] ❌ ${msg}`); }
 
-// --- SAFE SESSION ---
 function createSafeSession(ip, community, options) {
     try {
         const session = snmp.createSession(ip, community, {
@@ -42,8 +41,7 @@ function createSafeSession(ip, community, options) {
 
 async function reportStatus(ip, status, details) {
     const payload = { ip, status, details };
-    try { await localClient.post(`${LOCAL_API_URL}/update-status`, payload); } 
-    catch (e) { }
+    try { await localClient.post(`${LOCAL_API_URL}/update-status`, payload); } catch (e) { }
     if (CLOUD_API_URL) try { await cloudClient.post(`${CLOUD_API_URL}/update-status`, payload); } catch (e) {}
 }
 
@@ -52,109 +50,173 @@ async function resolveIP(input) {
     try { const l = await dns.lookup(input); return l.address; } catch (e) { return input; }
 }
 
+// IMPROVED FORMATTER: Shows minutes if < 1 day
 function formatUptime(ticks) {
     if (!ticks) return "N/A";
     const totalSeconds = ticks / 100;
     const days = Math.floor(totalSeconds / (3600 * 24));
     const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+    if (days === 0) {
+        if (hours === 0) return `${minutes}m`;
+        return `${hours}h ${minutes}m`;
+    }
     return `${days}d ${hours}h`;
 }
 
 // =================================================================
-// 🧠 1. WINDOWS SERVER (Fixed Data Types)
+// 🧠 1. WINDOWS SERVER (TRUE UPTIME FIX)
 // =================================================================
 function checkWindowsServer(ip) {
     return new Promise((resolve) => {
         const session = createSafeSession(ip, "public", { version: snmp.Version1 });
         if(!session) return resolve(null);
 
-        // Init to NULL so we know if data is missing vs 0
-        let stats = { cpu: null, ram: null, disk: null, uptime: "" };
+        let stats = { cpu: 0, ram: 0, disk: 0, uptime: "" };
 
-        session.get(["1.3.6.1.2.1.1.3.0"], (err, vbs) => {
+        // OID CHANGE: Use hrSystemUptime (.25.1.1.0) instead of sysUpTime (.1.3.0)
+        session.get(["1.3.6.1.2.1.25.1.1.0"], (err, vbs) => {
             if (err) { session.close(); return resolve(null); } 
             stats.uptime = formatUptime(vbs[0].value);
 
+            // 1. CPU SCAN
             session.subtree("1.3.6.1.2.1.25.3.3.1.2", (varbinds) => {
                 if (varbinds.length > 0) {
                     let total = varbinds.reduce((sum, vb) => sum + vb.value, 0);
                     stats.cpu = Math.round(total / varbinds.length);
                 }
-                session.table("1.3.6.1.2.1.25.2.3.1", 20, (err2, table) => {
+            }, (err) => {
+                // 2. MANUAL STORAGE WALK
+                if (err) { session.close(); return resolve({ status: 'online', details: stats }); }
+
+                const storageData = {};
+                
+                session.subtree("1.3.6.1.2.1.25.2.3.1", (varbinds) => {
+                    varbinds.forEach(vb => {
+                        if (snmp.isVarbindError(vb)) return;
+                        const parts = vb.oid.split('.');
+                        const index = parts[parts.length - 1];
+                        const col = parts[parts.length - 2];
+                        const val = vb.value.toString();
+
+                        if (!storageData[index]) storageData[index] = { index };
+                        if (col === '2') storageData[index].type = val;
+                        if (col === '3') storageData[index].desc = val;
+                        if (col === '5') storageData[index].size = parseInt(val || 0);
+                        if (col === '6') storageData[index].used = parseInt(val || 0);
+                    });
+                }, (err2) => {
                     session.close();
-                    if (!err2) {
-                        const rows = Object.values(table);
-                        for (const entry of rows) {
-                            const type = entry[2] ? entry[2].toString() : "";
-                            const descr = entry[3] ? entry[3].toString().toLowerCase() : "";
-                            // Safe Parse: Ensure we handle Strings/Numbers correctly
-                            const size = Number(entry[5]);
-                            const used = Number(entry[6]);
-                            
-                            if (!size || isNaN(size) || size <= 0) continue;
-                            
-                            const pct = Math.round((used / size) * 100);
-                            
-                            if (descr.includes("physical memory") || type.endsWith(".1.3.6.1.2.1.25.2.1.2")) stats.ram = pct;
-                            if (descr.includes("c:") || (descr.includes("fixed") && descr.includes("disk"))) {
-                                if(descr.includes("c:") || stats.disk === null) stats.disk = pct;
-                            }
-                        }
-                    }
-                    // Only send what we found. Nulls will be handled by Index.html logic.
-                    log(`✅ [WIN] ${ip} CPU:${stats.cpu}% RAM:${stats.ram}%`);
+                    
+                    Object.values(storageData).forEach(row => {
+                        if (!row.size || row.size <= 0) return;
+                        const pct = Math.round((row.used / row.size) * 100);
+                        const desc = (row.desc || "").toLowerCase();
+                        const type = (row.type || "");
+
+                        if (desc.includes("physical memory")) stats.ram = pct;
+                        if (desc.includes("c:") || (type.includes("25.2.1.4") && desc.includes("c:"))) stats.disk = pct;
+                    });
+
+                    log(`✅ [WIN] ${ip} Up:${stats.uptime} CPU:${stats.cpu}% RAM:${stats.ram}% Disk:${stats.disk}%`);
                     resolve({ status: 'online', details: stats });
                 });
-            }, (err) => { session.close(); resolve(null); });
+            });
         });
         session.on('error', () => session.close());
     });
 }
 
 // =================================================================
-// 🖨️ 2. PRINTERS
+// 🧱 2. SMOOTHWALL (TRUE UPTIME FIX)
+// =================================================================
+function checkSmoothwall(ip) {
+    return new Promise((resolve) => {
+        const session = createSafeSession(ip, "smoothwallsnmp", { version: snmp.Version1 });
+        if(!session) return resolve(null);
+
+        let stats = { uptime: "", ram: 0, disk: 0, sysName: "Smoothwall" };
+
+        // OID CHANGE: hrSystemUptime (.25.1.1.0) + sysName (.1.5.0)
+        session.get(["1.3.6.1.2.1.25.1.1.0", "1.3.6.1.2.1.1.5.0"], (err, vbs) => {
+            if (err) { session.close(); return resolve(null); }
+            stats.uptime = formatUptime(vbs[0].value);
+            stats.sysName = vbs[1].value.toString();
+
+            const storageData = {};
+
+            session.subtree("1.3.6.1.2.1.25.2.3.1", (varbinds) => {
+                varbinds.forEach(vb => {
+                    if (snmp.isVarbindError(vb)) return;
+                    const parts = vb.oid.split('.');
+                    const index = parts[parts.length - 1];
+                    const col = parts[parts.length - 2];
+                    const val = vb.value.toString();
+
+                    if (!storageData[index]) storageData[index] = {};
+                    if (col === '2') storageData[index].type = val;
+                    if (col === '3') storageData[index].desc = val;
+                    if (col === '5') storageData[index].size = parseInt(val || 0);
+                    if (col === '6') storageData[index].used = parseInt(val || 0);
+                });
+            }, (err2) => {
+                session.close();
+                Object.values(storageData).forEach(row => {
+                    if (!row.size || row.size <= 0) return;
+                    const pct = Math.round((row.used / row.size) * 100);
+                    const desc = (row.desc || "").toLowerCase();
+                    
+                    if (desc.includes("physical memory")) stats.ram = pct;
+                    if (desc === "/var/log" || (desc === "/" && stats.disk === 0)) stats.disk = pct;
+                });
+                log(`✅ [FW] ${ip} Up:${stats.uptime} RAM:${stats.ram}% Disk:${stats.disk}%`);
+                resolve({ status: 'online', details: stats });
+            });
+        });
+        session.on('error', () => session.close());
+    });
+}
+
+// =================================================================
+// 🖨️ 3. PRINTERS
 // =================================================================
 function checkPrinter(ip) {
     return new Promise((resolve) => {
         const session = createSafeSession(ip, "public", { version: snmp.Version1 });
         if(!session) return resolve(null);
-
         const oidAlerts = "1.3.6.1.2.1.43.18.1.1.8";
         let alerts = [];
-
         session.subtree(oidAlerts, (vbs) => {
             vbs.forEach(vb => { if(!snmp.isVarbindError(vb)) alerts.push(vb.value.toString()); });
         }, (err) => {
             session.close();
-            if (alerts.length > 0) resolve({ status: 'amber', details: { note: alerts.join(", ") } });
-            else resolve({ status: 'online', details: { note: "Ready" } });
+            if (alerts.length > 0) {
+                const clean = alerts.filter(a => !a.toLowerCase().includes("printing") && !a.toLowerCase().includes("ready"));
+                resolve({ status: clean.length > 0 ? 'amber' : 'online', details: { note: clean.join(", ") || "Ready" } });
+            } else resolve({ status: 'online', details: { note: "Ready" } });
         });
         session.on('error', () => { session.close(); resolve({status:'online', details:{note:"Ready"}}); });
     });
 }
 
 // =================================================================
-// 💾 3. HP SAN
+// 💾 4. HP SAN
 // =================================================================
 function checkHpSan(ip) {
     return new Promise((resolve) => {
         const session = createSafeSession(ip, "public", { version: snmp.Version2c });
         if(!session) return resolve(null);
-
         let maxHealth = 0;
-        const oidHealth = "1.3.6.1.3.94.1.6.1.6"; 
-        const oidName = "1.3.6.1.2.1.1.5.0";
-
-        session.subtree(oidHealth, (vbs) => {
+        session.subtree("1.3.6.1.3.94.1.6.1.6", (vbs) => {
             vbs.forEach(vb => { if(!snmp.isVarbindError(vb) && vb.value > maxHealth) maxHealth = vb.value; });
         }, (err) => {
             if (err) { session.close(); return resolve(null); }
-            session.get([oidName], (e2, vbs2) => {
+            session.get(["1.3.6.1.2.1.1.5.0"], (e2, vbs2) => {
                 session.close();
                 const name = (!e2 && !snmp.isVarbindError(vbs2[0])) ? vbs2[0].value.toString() : "HP SAN";
-                let msg = (maxHealth === 3 || maxHealth === 2) ? "Health: OK" : (maxHealth >= 4 ? "Health: Alert" : "Health: Unknown");
-                let status = (maxHealth >= 4) ? 'amber' : 'online';
-                resolve({ status, details: { sysName: name, note: msg } });
+                let msg = (maxHealth === 3 || maxHealth === 2) ? "Health: OK" : "Health: Alert";
+                resolve({ status: (maxHealth >= 4) ? 'amber' : 'online', details: { sysName: name, note: msg } });
             });
         });
         session.on('error', () => { session.close(); resolve(null); });
@@ -162,22 +224,18 @@ function checkHpSan(ip) {
 }
 
 // =================================================================
-// 📶 4. CAMBIUM WAP
+// 📶 5. CAMBIUM WAP
 // =================================================================
 function checkCambium(ip) {
     return new Promise((resolve) => {
         const session = createSafeSession(ip, "public", { version: snmp.Version2c });
         if(!session) return resolve(null);
-
         let totalClients = 0;
-        const oidClients = "1.3.6.1.4.1.17713.22.1.4.1.7"; 
-        const oidName = "1.3.6.1.2.1.1.5.0";
-
-        session.subtree(oidClients, (vbs) => {
+        session.subtree("1.3.6.1.4.1.17713.22.1.4.1.7", (vbs) => {
             vbs.forEach(vb => { if(!snmp.isVarbindError(vb)) totalClients += (parseInt(vb.value) || 0); });
         }, (err) => {
             if (err) { session.close(); return resolve(null); }
-            session.get([oidName], (e2, vbs2) => {
+            session.get(["1.3.6.1.2.1.1.5.0"], (e2, vbs2) => {
                 session.close();
                 const name = (!e2 && !snmp.isVarbindError(vbs2[0])) ? vbs2[0].value.toString() : "Cambium AP";
                 resolve({ status: 'online', details: { sysName: name, note: `${totalClients} Clients` } });
@@ -188,7 +246,7 @@ function checkCambium(ip) {
 }
 
 // =================================================================
-// 📹 5. OTHER
+// 📹 6. OTHER
 // =================================================================
 function checkNVR(ip) {
     return new Promise((resolve) => {
@@ -210,18 +268,6 @@ async function checkWebService(target) {
         if (!target.details?.signature) { await saveFingerprint(target, "Learned"); }
         return { status: 'online', details: { latency: `${lat}ms` } };
     } catch (e) { return { status: 'offline', details: { error: "HTTP Error" } }; }
-}
-
-function checkSnmpGeneric(ip) {
-    return new Promise((resolve) => {
-        const session = createSafeSession(ip, "smoothwallsnmp", { version: snmp.Version1 });
-        session.get(['1.3.6.1.2.1.1.5.0'], (err, vbs) => {
-            session.close();
-            if(err) return resolve(null);
-            resolve({ status: 'online', details: { sysName: vbs[0].value.toString() } });
-        });
-        session.on('error', () => {});
-    });
 }
 
 function identifyDevice(ip) {
@@ -269,7 +315,7 @@ async function processDevice(target) {
         else if (type === 'nvr') d = await checkNVR(cleanIP);
         else if (type === 'printer') d = await checkPrinter(cleanIP);
         else if (type === 'service') d = await checkWebService(target);
-        else if (type === 'firewall') d = await checkSnmpGeneric(cleanIP);
+        else if (type === 'firewall') d = await checkSmoothwall(cleanIP);
 
         if (d) { status = d.status; details = d.details; }
         else {
