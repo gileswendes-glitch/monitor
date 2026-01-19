@@ -14,7 +14,7 @@
         #sidebar-right { border-left: 1px solid #333; }
         #main-content { flex-grow: 1; display: flex; flex-direction: column; background: #000; }
 
-        .card { background: #252525; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; flex-shrink: 0; }
+        .card { background: #252525; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; flex-shrink: 0; transition: all 0.3s ease; }
         
         .card-cloud { border-top: 3px solid #28a745; min-height: 100px; }
         .card-local { border-top: 3px solid #ffc107; }
@@ -28,11 +28,19 @@
         .card-access { border-top: 3px solid #9c27b0; }
         .card-cctv { border-top: 3px solid #f44336; }
 
-        .card h2 { margin: 0 0 10px 0; font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+        /* Header with Toggle */
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .card h2 { margin: 0; font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+        .toggle-btn { cursor: pointer; font-size: 16px; opacity: 0.5; transition: opacity 0.2s; user-select: none; }
+        .toggle-btn:hover { opacity: 1; }
+        .toggle-btn.hidden-active { opacity: 0.3; filter: grayscale(100%); }
+
         .big-stat { font-size: 48px; font-weight: 300; color: #fff; letter-spacing: -2px; line-height: 1; }
         .unit { font-size: 13px; color: #666; font-weight: 500; margin-top: 5px; display: block; }
         
-        .list-window { overflow-y: auto; padding-right: 5px; max-height: 320px; min-height: 30px; position: relative; scrollbar-width: none; }
+        /* List Window & Animation */
+        .list-window { overflow-y: auto; padding-right: 5px; max-height: 320px; min-height: 30px; position: relative; scrollbar-width: none; transition: max-height 0.4s ease, opacity 0.4s ease; opacity: 1; }
+        .list-window.minimized { max-height: 0; min-height: 0; opacity: 0; overflow: hidden; margin: 0; padding: 0; }
         .list-window::-webkit-scrollbar { display: none; }
 
         .service-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #333; font-size: 13px; color: #ccc; }
@@ -43,7 +51,6 @@
         .amber { background: #ffc107; box-shadow: 0 0 8px rgba(255, 193, 7, 0.6); animation: pulse-amber 2s infinite; }
         .offline { background: #f8312f; box-shadow: 0 0 10px rgba(248, 49, 47, 0.6); animation: flash-red 0.8s infinite alternate; }
 
-        /* 24H MONITOR FLASH */
         @keyframes flash-green-amber {
             0% { background-color: #00d26a; box-shadow: 0 0 8px #00d26a; }
             50% { background-color: #ffc107; box-shadow: 0 0 8px #ffc107; }
@@ -65,7 +72,6 @@
         .fw-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; border-bottom: 1px solid #333; padding-bottom: 4px; }
         .fw-label { color: #888; }
         .fw-val { color: #fff; font-weight: 600; text-align: right; }
-        .fw-desc { font-size: 11px; color: #666; line-height: 1.4; margin-top: 5px; max-height: 40px; overflow: hidden; }
 
         /* ANIMATIONS */
         @keyframes pulse-amber { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
@@ -105,43 +111,11 @@
 
         /* --- MOBILE LAYOUT (<900px) --- */
         @media screen and (max-width: 900px) {
-            /* 1. Use vertical scrolling for the whole page */
             body { flex-direction: column; overflow-y: auto; height: auto; padding-bottom: 50vh; }
-            
-            /* 2. Sidebars take full width and stack */
-            .sidebar { 
-                width: 100%; 
-                height: auto; 
-                box-shadow: none; 
-                padding: 10px;
-                box-sizing: border-box; 
-                order: 2; /* Put lists AFTER header */
-                overflow-y: visible; 
-            }
-            
-            /* 3. Main content holds the map */
-            #main-content { 
-                order: 1; 
-                flex-grow: 0; 
-                width: 100%;
-            }
-            
-            /* 4. MAP: FIXED AT BOTTOM 50% */
-            #map-wrapper { 
-                display: block !important; 
-                position: fixed; 
-                bottom: 0; 
-                left: 0; 
-                width: 100%; 
-                height: 50vh; 
-                z-index: 4000; 
-                border-top: 4px solid #333; 
-                background: #121212;
-            }
-            
-            /* 5. Allow lists to expand fully (scroll body instead of tiny windows) */
+            .sidebar { width: 100%; height: auto; box-shadow: none; padding: 10px; box-sizing: border-box; order: 2; overflow-y: visible; }
+            #main-content { order: 1; flex-grow: 0; width: 100%; }
+            #map-wrapper { display: block !important; position: fixed; bottom: 0; left: 0; width: 100%; height: 50vh; z-index: 4000; border-top: 4px solid #333; background: #121212; }
             .list-window { max-height: none; }
-            
             .page-header { padding: 10px 15px; font-size: 16px; }
             .badge { display: none; }
         }
@@ -151,7 +125,9 @@
 
     <div id="sidebar-left" class="sidebar">
         <div class="card card-firewall">
-            <h2>Firewall & Internet</h2>
+            <div class="card-header">
+                <h2>Firewall & Internet</h2>
+            </div>
             <div style="text-align: center; padding-bottom: 15px; border-bottom: 1px solid #333; margin-bottom: 10px;">
                 <span class="big-stat" id="net-ping">--</span>
                 <span class="unit" style="display:inline; margin-left:10px;">ms LATENCY</span>
@@ -160,18 +136,27 @@
         </div>
         
         <div class="card card-cloud">
-            <h2>Cloud Services</h2>
+            <div class="card-header">
+                <h2>Cloud Services</h2>
+                <span class="toggle-btn" onclick="toggleCard('service', 'cloud-window', this)">👁️</span>
+            </div>
             <div id="cloud-window" class="list-window"></div>
         </div>
         <div class="card card-local">
-            <h2>Local Servers</h2>
+            <div class="card-header">
+                <h2>Local Servers</h2>
+                <span class="toggle-btn" onclick="toggleCard('server', 'server-window', this)">👁️</span>
+            </div>
             <div id="server-window" class="list-window"></div>
         </div>
         <div class="card card-nvr">
-            <h2>NVRs & Cameras</h2>
+            <div class="card-header">
+                <h2>NVRs & Cameras</h2>
+                <span class="toggle-btn" onclick="toggleCard('nvr', 'nvr-list', this)">👁️</span>
+            </div>
             <div id="nvr-list" class="list-window"></div>
         </div>
-        <div class="version-footer">KINGSBURY MONITOR v5.0 (Mobile Ready)</div>
+        <div class="version-footer">KINGSBURY MONITOR v5.1</div>
     </div>
 
     <div id="main-content">
@@ -194,32 +179,53 @@
 
     <div id="sidebar-right" class="sidebar">
         <div class="card card-printer">
-            <h2>Printers</h2>
+            <div class="card-header">
+                <h2>Printers</h2>
+                <span class="toggle-btn" onclick="toggleCard('printer', 'printer-window', this)">👁️</span>
+            </div>
             <div id="printer-window" class="list-window"></div>
         </div>
         
         <div class="card card-cctv">
-            <h2>CCTV Cameras</h2>
+            <div class="card-header">
+                <h2>CCTV Cameras</h2>
+                <span class="toggle-btn" onclick="toggleCard('cctv', 'cctv-list', this)">👁️</span>
+            </div>
             <div id="cctv-list" class="list-window"></div>
         </div>
         <div class="card card-switch">
-            <h2>Switches</h2>
+            <div class="card-header">
+                <h2>Switches</h2>
+                <span class="toggle-btn" onclick="toggleCard('switch', 'switch-window', this)">👁️</span>
+            </div>
             <div id="switch-window" class="list-window"></div>
         </div>
         <div class="card card-wap">
-            <h2>Wireless APs</h2>
+            <div class="card-header">
+                <h2>Wireless APs</h2>
+                <span class="toggle-btn" onclick="toggleCard('wap', 'wap-list', this)">👁️</span>
+            </div>
             <div id="wap-list" class="list-window"></div>
         </div>
         <div class="card card-telephone">
-            <h2>Telephones</h2>
+            <div class="card-header">
+                <h2>Telephones</h2>
+                <span class="toggle-btn" onclick="toggleCard('telephone', 'tel-list', this)">👁️</span>
+            </div>
             <div id="tel-list" class="list-window"></div>
         </div>
         <div class="card card-access">
-            <h2>Access Control</h2>
+            <div class="card-header">
+                <h2>Access Control</h2>
+                <span class="toggle-btn" onclick="toggleCard('access_control', 'access-list', this)">👁️</span>
+            </div>
             <div id="access-list" class="list-window"></div>
         </div>
         <div class="card card-hardware">
-            <h2>Misc Hardware</h2>
+            <div class="card-header">
+                <h2>Misc Hardware</h2>
+                <span class="toggle-btn" onclick="toggleCard('hardware', 'hardware-list', this)">👁️</span>
+            </div>
             <div id="hardware-list" class="list-window"></div>
         </div>
     </div>
@@ -247,52 +253,85 @@
         let isPaused = false;
         let mapTimer;
 
+        // --- HIDE/SHOW LOGIC ---
+        // Load preferences from Storage
+        const hiddenTypes = new Set(JSON.parse(localStorage.getItem('hiddenTypes') || '[]'));
+
+        function toggleCard(type, elementId, btn) {
+            const el = document.getElementById(elementId);
+            if(!el) return;
+
+            if (hiddenTypes.has(type)) {
+                // UNHIDE
+                hiddenTypes.delete(type);
+                el.classList.remove('minimized');
+                if(btn) btn.classList.remove('hidden-active');
+            } else {
+                // HIDE
+                hiddenTypes.add(type);
+                el.classList.add('minimized');
+                if(btn) btn.classList.add('hidden-active');
+            }
+            
+            // Save preference
+            localStorage.setItem('hiddenTypes', JSON.stringify([...hiddenTypes]));
+            
+            // Trigger Map Update to remove/add icons immediately
+            updateDashboard();
+        }
+
+        // Apply initial hidden states on load
+        window.addEventListener('DOMContentLoaded', () => {
+            hiddenTypes.forEach(type => {
+                // Map types to IDs manually for init (simplified)
+                const map = {
+                    'nvr': 'nvr-list', 'cctv': 'cctv-list', 'printer': 'printer-window', 
+                    'switch': 'switch-window', 'wap': 'wap-list', 'telephone': 'tel-list', 
+                    'access_control': 'access-list', 'hardware': 'hardware-list', 'server': 'server-window', 'service': 'cloud-window'
+                };
+                if(map[type]) {
+                    const el = document.getElementById(map[type]);
+                    if(el) el.classList.add('minimized');
+                    // Find button near it (hacky but works for static HTML)
+                    const btn = el.previousElementSibling?.querySelector('.toggle-btn');
+                    if(btn) btn.classList.add('hidden-active');
+                }
+            });
+        });
+
         // --- AUTO-SCROLL LOGIC ---
         let scrollStates = {}; 
-        
         function startAutoScroll() {
             setInterval(() => {
                 const lists = document.querySelectorAll('.list-window');
                 lists.forEach(div => {
-                    if (div.matches(':hover')) return;
+                    if (div.matches(':hover') || div.classList.contains('minimized')) return; // Skip if hidden
                     if (div.scrollHeight <= div.clientHeight) return;
-
+                    
                     const id = div.id;
                     if (!scrollStates[id]) scrollStates[id] = { dir: 1, pause: 0 };
-                    
                     const state = scrollStates[id];
 
-                    if (state.pause > 0) {
-                        state.pause -= 60; 
-                        return;
-                    }
-
+                    if (state.pause > 0) { state.pause -= 60; return; }
                     div.scrollTop += (state.dir * 1); 
 
                     if (Math.ceil(div.scrollTop + div.clientHeight) >= div.scrollHeight) {
-                        state.dir = -1; 
-                        state.pause = 3000; 
-                    }
-                    else if (div.scrollTop <= 0) {
-                        state.dir = 1; 
-                        state.pause = 3000; 
+                        state.dir = -1; state.pause = 3000; 
+                    } else if (div.scrollTop <= 0) {
+                        state.dir = 1; state.pause = 3000; 
                     }
                 });
             }, 60); 
         }
 
         // --- MAP CONTROLS ---
-        map.on('popupopen', function() {
-            if(!isPaused) { togglePause(); document.getElementById('pause-btn').innerText = "▶️ Resume (Reading)"; }
-        });
-
+        map.on('popupopen', function() { if(!isPaused) { togglePause(); document.getElementById('pause-btn').innerText = "▶️ Resume (Reading)"; } });
         function togglePause() {
             isPaused = !isPaused;
             const btn = document.getElementById('pause-btn');
             if(isPaused) { btn.innerText = "▶️ Play"; btn.classList.add('paused'); }
             else { btn.innerText = "⏸️ Pause"; btn.classList.remove('paused'); updateDashboard(); }
         }
-
         function nextMap() {
             currentMapIndex = (currentMapIndex + 1) % maps.length;
             loadMap(currentMapIndex);
@@ -300,13 +339,11 @@
             updateDashboard().then(() => { isPaused = wasPaused; });
             clearInterval(mapTimer); startMapTimer();
         }
-
         function startMapTimer() {
             mapTimer = setInterval(() => { 
                 if(!isPaused) { currentMapIndex = (currentMapIndex + 1) % maps.length; loadMap(currentMapIndex); updateDashboard(); }
             }, 15000);
         }
-
         function loadMap(index) {
             if (window.getComputedStyle(document.getElementById('map-wrapper')).display === 'none') return;
             const config = maps[index];
@@ -322,25 +359,23 @@
         }
 
         function getPopupContent(d) {
-            const timeStr = d.updatedAt ? new Date(d.updatedAt).toLocaleTimeString() : (d.lastSeen ? new Date(d.lastSeen).toLocaleTimeString() : "Just now");
+            const timeStr = d.updatedAt ? new Date(d.updatedAt).toLocaleTimeString() : "Just now";
             let statusColor = d.status === 'online' ? '#00d26a' : (d.status === 'amber' ? '#ffc107' : '#f8312f');
             let info = '';
+            
+            // CLEAN INFO FOR POPUP
             if(d.details) {
-                if(d.details.note) info = `<div style="margin-top:6px; font-style:italic; color:#ddd; font-weight:500;">"${d.details.note}"</div>`;
-                else if(d.details.error) info = `<div style="margin-top:6px; color:#ff6b6b; font-weight:bold;">⚠️ ${d.details.error}</div>`;
-                if(d.details.uptime) info += `<div style="margin-top:4px; font-size:10px; color:#aaa;">Uptime: ${d.details.uptime}</div>`;
-                
-                // Add mini stats to popup too
-                if(d.type === 'server' && (d.details.cpu !== undefined || d.details.cpu !== null)) {
-                    let cpu = parseInt(d.details.cpu || 0);
-                    let ram = parseInt(d.details.ram || 0);
-                    let disk = parseInt(d.details.disk || 0);
-                    info += `<div style="margin-top:8px; border-top:1px solid #444; padding-top:4px; font-size:10px; color:#ccc;">
-                        CPU: ${cpu}% | RAM: ${ram}% | C: ${disk}%
-                    </div>`;
+                if(d.type === 'nvr' || d.type === 'cctv') {
+                    // Specific Camera Popup
+                    if(d.details.sysName) info += `<div style="margin-top:6px; font-weight:bold; color:#fff;">${d.details.sysName}</div>`;
+                    if(d.details.note) info += `<div style="font-size:10px; color:#aaa;">Firmware: ${d.details.note}</div>`;
+                } else {
+                    // Standard Popup
+                    if(d.details.note) info = `<div style="margin-top:6px; font-style:italic; color:#ddd; font-weight:500;">"${d.details.note}"</div>`;
+                    if(d.details.uptime) info += `<div style="margin-top:4px; font-size:10px; color:#aaa;">Uptime: ${d.details.uptime}</div>`;
                 }
             }
-            // CRASH PREVENTION: Safe Name fallback
+
             const safeName = d.name || 'Unknown';
             return `<div style="text-align:center; min-width: 140px;">
                     <div style="font-weight:700; font-size:14px; margin-bottom:4px; color:#fff;">${safeName}</div>
@@ -359,144 +394,87 @@
                 const res = await fetch('/api/devices');
                 let devices = await res.json();
                 
-                // 1. GHOST FILTER: Hide devices with no name immediately (Cleans "Unknown")
+                // 1. GHOST FILTER & SORT
                 devices = devices.filter(d => d.name && d.name !== 'undefined');
-
-                // 2. SAFE SORT
                 devices.sort((a, b) => (a.name || 'Unknown').localeCompare(b.name || 'Unknown'));
                 
                 let cloudH='', serverH='', hardwareH='', nvrH='', switchH='', prtH='', telH='', wapH='', accessH='', cctvH='';
                 let firewallHTML = '';
 
-                // 24 Hour Monitor Logic
                 const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
                 devices.forEach(d => {
                     let statusClass = d.status === 'online' ? 'online' : (d.status === 'amber' ? 'amber' : 'offline');
-                    let staleIcon = '';
-
-                    // RESTORED: 10 Minute Warning
-                    if (d.last_seen) {
-                        const timeSince = Date.now() - new Date(d.last_seen).getTime();
-                        if (timeSince > 600000) { 
-                            staleIcon = '<span title="Data >10m old" style="margin-left:5px; font-size:12px;">⚠️</span>';
-                        }
+                    
+                    // RECOVERY FLASH
+                    if (d.type !== 'printer' && d.status === 'online' && d.last_issue && new Date(d.last_issue) > oneDayAgo) {
+                        statusClass = 'flash-monitor'; 
                     }
 
-                    // 2. CHECK IF RECOVERED IN LAST 24H (Flash)
-                    if (d.type !== 'printer' && d.status === 'online' && d.last_issue) {
-                        const lastIssueTime = new Date(d.last_issue);
-                        if (lastIssueTime > oneDayAgo) {
-                            statusClass = 'flash-monitor'; 
-                        }
-                    }
-
-                    // FIXED: Name is now guaranteed by filter, but kept safe just in case
                     const dName = d.name || 'Unknown Device';
 
-                    // Generic Item
+                    // --- STANDARD ITEM BUILDER ---
                     let itemHTML = `<div class="service-item"><span>${dName}</span><div class="status-dot ${statusClass}"></div></div>`;
 
-                    // --- PRINTERS ---
-                    if (d.type === 'printer') {
-                        let note = (d.details && d.details.note) ? d.details.note : '';
+                    // --- NVR / CAMERA SPECIFIC (CLEAN LAYOUT) ---
+                    if (d.type === 'nvr' || d.type === 'cctv') {
+                        // Logic: Name on top. Firmware/Model on bottom (small & grey). NO IP.
+                        const firmware = d.details?.note || '';
+                        const model = d.details?.sysName || '';
                         
-                        // OVERRIDE: Sleep = Green
-                        if (note && note.toLowerCase().includes('sleep')) {
-                            statusClass = 'online';
-                        }
+                        // If we have a custom Name (e.g. "Main Hall"), show that.
+                        // If not, show Model. 
+                        // Subtext shows Firmware.
                         
-                        let subHTML = '';
-                        const skipWords = ['ready', 'online'];
-                        if (note && !skipWords.includes(note.toLowerCase())) {
-                            let noteColor = '#777';
-                            if (statusClass === 'amber') noteColor = '#ffc107';
-                            else if (statusClass === 'offline') noteColor = '#f8312f';
+                        let subText = firmware ? `${firmware}` : '';
+                        
+                        itemHTML = `
+                        <div class="service-item">
+                            <div style="display:flex; flex-direction:column; overflow:hidden;">
+                                <span style="font-weight:600;">${dName}</span>
+                                <div class="service-sub" style="color:#666;">${subText}</div>
+                            </div>
+                            <div class="status-dot ${statusClass}"></div>
+                        </div>`;
+                        
+                        if(d.type === 'nvr') nvrH += itemHTML;
+                        else cctvH += itemHTML;
+                    }
 
-                            subHTML = `<div class="service-sub" style="color:${noteColor}">${note}</div>`;
-                        }
-                        itemHTML = `<div class="service-item"><div style="display:flex; flex-direction:column; overflow:hidden;"><span>${dName}${staleIcon}</span>${subHTML}</div><div class="status-dot ${statusClass}"></div></div>`;
+                    // --- PRINTERS ---
+                    else if (d.type === 'printer') {
+                        let note = d.details?.note || '';
+                        if (note && note.toLowerCase().includes('sleep')) statusClass = 'online';
+                        let subHTML = (note && !['ready','online'].includes(note.toLowerCase())) ? `<div class="service-sub" style="color:#777">${note}</div>` : '';
+                        itemHTML = `<div class="service-item"><div style="display:flex; flex-direction:column; overflow:hidden;"><span>${dName}</span>${subHTML}</div><div class="status-dot ${statusClass}"></div></div>`;
                         prtH += itemHTML;
                     }
 
-                    // --- NVRs ---
-                    else if (d.type === 'nvr') {
-                        let note = d.details && d.details.note ? d.details.note : '';
-                        let uptime = d.details && d.details.uptime ? d.details.uptime : '';
-                        let text = note; 
-                        if(uptime) text += (text ? ` • ` : ``) + `${uptime}`;
-                        let subHTML = text ? `<div class="service-sub" style="color:#aaa">${text}</div>` : '';
-                        itemHTML = `<div class="service-item"><div style="display:flex; flex-direction:column; overflow:hidden;"><span>${dName}${staleIcon}</span>${subHTML}</div><div class="status-dot ${statusClass}"></div></div>`;
-                        nvrH += itemHTML;
-                    }
-
-                    // --- WAPs (Wireless APs) ---
+                    // --- WAPs ---
                     else if (d.type === 'wap') {
-                        let note = d.details && d.details.note ? d.details.note : '';
-                        // Highlight Clients
+                        let note = d.details?.note || '';
                         let subHTML = note ? `<div class="service-sub" style="color:#3498db; font-weight:600;">${note}</div>` : '';
-                        itemHTML = `<div class="service-item"><div style="display:flex; flex-direction:column; overflow:hidden;"><span>${dName}${staleIcon}</span>${subHTML}</div><div class="status-dot ${statusClass}"></div></div>`;
+                        itemHTML = `<div class="service-item"><div style="display:flex; flex-direction:column; overflow:hidden;"><span>${dName}</span>${subHTML}</div><div class="status-dot ${statusClass}"></div></div>`;
                         wapH += itemHTML;
                     }
 
-                    // --- HARDWARE / SAN / STORAGE ---
-                    else if (d.type === 'hardware' || d.type === 'storage' || d.type === 'san') {
-                        let note = d.details && d.details.note ? d.details.note : '';
-                        let noteColor = '#aaa';
-                        // Color Code SAN Health
-                        if(note.toLowerCase().includes('failed') || note.toLowerCase().includes('critical')) noteColor = '#f8312f';
-                        else if(note.toLowerCase().includes('degraded') || note.toLowerCase().includes('warning')) noteColor = '#ffc107';
-                        else if(note.toLowerCase().includes('ok')) noteColor = '#00d26a';
-
-                        let subHTML = note ? `<div class="service-sub" style="color:${noteColor}; font-weight:500;">${note}</div>` : '';
-                        itemHTML = `<div class="service-item"><div style="display:flex; flex-direction:column; overflow:hidden;"><span>${dName}${staleIcon}</span>${subHTML}</div><div class="status-dot ${statusClass}"></div></div>`;
-                        hardwareH += itemHTML;
-                    }
-
-                    // --- SERVERS (UPDATED: Uptime in Header) ---
+                    // --- SERVERS ---
                     else if (d.type === 'server') {
                         let statsHTML = '';
-                        let uptimeHTML = '';
-
-                        if (d.details && d.details.cpu !== undefined && d.details.cpu !== null) {
+                        if (d.details && d.details.cpu !== undefined) {
                             let cpu = parseInt(d.details.cpu)||0, ram = parseInt(d.details.ram)||0, disk = parseInt(d.details.disk)||0;
-                            
-                            // Generate Uptime HTML
-                            if(d.details.uptime) {
-                                uptimeHTML = `<span style="font-size:11px; color:#888; font-weight:normal; margin-left:8px;">${d.details.uptime}</span>`;
-                            }
-
                             statsHTML = `
                             <div class="stat-container">
-                                <div class="stat-row">
-                                    <span class="stat-label">CPU</span>
-                                    <div class="stat-track" title="CPU: ${cpu}%"><div class="stat-fill fill-cpu" style="width:${cpu}%"></div></div>
-                                </div>
-                                <div class="stat-row">
-                                    <span class="stat-label">RAM</span>
-                                    <div class="stat-track" title="RAM: ${ram}%"><div class="stat-fill fill-ram" style="width:${ram}%"></div></div>
-                                </div>
-                                <div class="stat-row">
-                                    <span class="stat-label">HDD</span>
-                                    <div class="stat-track" title="C: ${disk}%"><div class="stat-fill fill-disk" style="width:${disk}%"></div></div>
-                                </div>
+                                <div class="stat-row"><span class="stat-label">CPU</span><div class="stat-track"><div class="stat-fill fill-cpu" style="width:${cpu}%"></div></div></div>
+                                <div class="stat-row"><span class="stat-label">RAM</span><div class="stat-track"><div class="stat-fill fill-ram" style="width:${ram}%"></div></div></div>
+                                <div class="stat-row"><span class="stat-label">HDD</span><div class="stat-track"><div class="stat-fill fill-disk" style="width:${disk}%"></div></div></div>
                             </div>`;
                         } else {
-                            // FALLBACK: Status Online + No CPU = SNMP Fail
-                            let msg = "Waiting for Agent...";
-                            if(d.status === 'online') msg = "SNMP Unreachable";
-                            else if(d.status === 'offline') msg = "Device Offline";
-                            statsHTML = `<div style="font-size:10px; color:#555; margin-top:3px; font-style:italic;">${msg}</div>`;
+                            statsHTML = `<div style="font-size:10px; color:#555; margin-top:3px; font-style:italic;">${d.status==='online'?'SNMP Unreachable':'Offline'}</div>`;
                         }
-
-                        // FLEX COLUMN LAYOUT WITH HEADER UPTIME
-                        itemHTML = `
-                        <div class="service-item" style="flex-direction:column; align-items:stretch; padding:10px 0;">
+                        itemHTML = `<div class="service-item" style="flex-direction:column; align-items:stretch; padding:10px 0;">
                             <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <div style="display:flex; align-items:center;">
-                                    <span style="font-weight:600;">${dName}${staleIcon}</span>
-                                    ${uptimeHTML}
-                                </div>
+                                <span style="font-weight:600;">${dName}</span>
                                 <div class="status-dot ${statusClass}"></div>
                             </div>
                             ${statsHTML}
@@ -504,42 +482,30 @@
                         serverH += itemHTML;
                     }
 
-                    // --- FIREWALL (UPDATED) ---
+                    // --- OTHERS ---
+                    else if (d.type === 'service') cloudH += itemHTML;
+                    else if (d.type === 'switch' || d.type === 'switch_hw') switchH += itemHTML; 
+                    else if (d.type === 'telephone') telH += itemHTML;
+                    else if (d.type === 'access_control') accessH += itemHTML;
+                    else if (d.type === 'hardware' || d.type === 'san') hardwareH += itemHTML;
+                    
+                    // Firewall Special
                     else if (d.type === 'firewall') {
                         const det = d.details || {};
                         let statsHTML = '';
-                        
-                        // Check if RAM/Disk data exists to draw bars
-                        if (det.ram !== undefined || det.disk !== undefined) {
-                            let ram = parseInt(det.ram || 0);
-                            let disk = parseInt(det.disk || 0);
-                            
-                            statsHTML = `
-                            <div class="stat-container" style="margin-top: 10px;">
-                                <div class="stat-row">
-                                    <span class="stat-label">RAM</span>
-                                    <div class="stat-track" title="RAM: ${ram}%"><div class="stat-fill fill-ram" style="width:${ram}%"></div></div>
-                                </div>
-                                <div class="stat-row">
-                                    <span class="stat-label">HDD</span>
-                                    <div class="stat-track" title="Disk: ${disk}%"><div class="stat-fill fill-disk" style="width:${disk}%"></div></div>
-                                </div>
+                        if (det.ram !== undefined) {
+                            statsHTML = `<div class="stat-container" style="margin-top: 10px;">
+                                <div class="stat-row"><span class="stat-label">RAM</span><div class="stat-track"><div class="stat-fill fill-ram" style="width:${det.ram}%"></div></div></div>
+                                <div class="stat-row"><span class="stat-label">HDD</span><div class="stat-track"><div class="stat-fill fill-disk" style="width:${det.disk}%"></div></div></div>
                             </div>`;
                         }
-
                         firewallHTML += `<div style="margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">
-                            <div class="fw-row"><span class="fw-label">Device Name</span><span class="fw-val">${det.sysName || dName}</span></div>
+                            <div class="fw-row"><span class="fw-label">Device</span><span class="fw-val">${det.sysName || dName}</span></div>
                             <div class="fw-row"><span class="fw-label">Status</span><div class="status-dot ${statusClass}"></div></div>
                             <div class="fw-row"><span class="fw-label">Uptime</span><span class="fw-val" style="color:#00d26a;">${det.uptime || '--'}</span></div>
                             ${statsHTML}
                         </div>`;
                     }
-
-                    else if (d.type === 'service') cloudH += itemHTML;
-                    else if (d.type === 'switch' || d.type === 'switch_hw') switchH += itemHTML; 
-                    else if (d.type === 'telephone') telH += itemHTML;
-                    else if (d.type === 'access_control') accessH += itemHTML;
-                    else if (d.type === 'cctv') cctvH += itemHTML;
                 });
 
                 document.getElementById('cloud-window').innerHTML = cloudH;
@@ -554,10 +520,13 @@
                 document.getElementById('cctv-list').innerHTML = cctvH;
                 document.getElementById('firewall-content').innerHTML = firewallHTML || '<div style="text-align: center; color: #666; font-size: 13px;">No Firewall Configured</div>';
 
-                // --- MAP ICONS UPDATE ---
+                // --- MAP ICONS UPDATE (RESPECT HIDDEN LAYERS) ---
                 if (!isPaused && window.getComputedStyle(document.getElementById('map-wrapper')).display !== 'none') {
                     devicesLayer.clearLayers();
                     devices.forEach(d => {
+                        // CHECK IF CATEGORY IS HIDDEN
+                        if(hiddenTypes.has(d.type)) return;
+
                         if (!d.map_coordinates || typeof d.map_coordinates.x === 'undefined') return;
                         if (d.floor_id === maps[currentMapIndex].id) {
                             let glowClass = d.status === 'online' ? 'glow-green' : (d.status === 'amber' ? 'glow-amber' : 'glow-red');
@@ -566,7 +535,7 @@
                             else if (d.type === 'telephone') iconHTML = '☏';
                             else if (d.type === 'wap') iconHTML = '📡'; 
                             else if (d.type === 'access_control') iconHTML = '🔐';
-                            else if (d.type === 'cctv') iconHTML = '📷';
+                            else if (d.type === 'cctv') iconHTML = '📹';
                             else if (d.type === 'nvr') iconHTML = '📼';
 
                             if (iconHTML) {
@@ -604,5 +573,3 @@
     </script>
 </body>
 </html>
-
-
