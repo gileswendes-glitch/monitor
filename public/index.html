@@ -118,6 +118,148 @@
         .raw-data-btn { font-size: 10px; color: #00d26a; border: 1px solid #00d26a; padding: 2px 5px; border-radius: 3px; cursor: pointer; margin-left: 10px; background: transparent; }
         .raw-view-box { display: none; background: #111; color: #0f0; padding: 10px; font-family: monospace; font-size: 11px; margin-top: 5px; border-radius: 4px; overflow-x: auto; white-space: pre; border: 1px solid #333; }
         .raw-view-box.active { display: block; }
+
+        /* === MOBILE RESPONSIVE === */
+        @media screen and (max-width: 900px) {
+            body {
+                flex-direction: column;
+                overflow-y: auto;
+                height: auto;
+                min-height: 100vh;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 25vh;
+                border: none !important;
+                padding: 10px;
+                overflow-y: auto;
+            }
+            
+            #sidebar-left {
+                order: 1;
+                border-bottom: 1px solid #333 !important;
+                border-right: none !important;
+            }
+            
+            #sidebar-right {
+                order: 2;
+                border-bottom: 1px solid #333 !important;
+                border-left: none !important;
+            }
+            
+            #main-content {
+                order: 3;
+                flex-grow: 0;
+                height: 50vh;
+                min-height: 50vh;
+            }
+            
+            .page-header {
+                padding: 10px 15px;
+                font-size: 16px;
+            }
+            
+            .page-header .weather-box {
+                display: none;
+            }
+            
+            #map-wrapper {
+                height: calc(50vh - 60px);
+            }
+            
+            .ticker-mask {
+                mask-image: none;
+                overflow-y: auto;
+            }
+            
+            .ticker-content {
+                position: relative;
+                padding-bottom: 0;
+            }
+            
+            .card {
+                margin-bottom: 10px;
+                padding: 10px;
+            }
+            
+            .list-window {
+                max-height: 150px;
+            }
+            
+            .version-footer {
+                display: none;
+            }
+            
+            .fixed-zone {
+                max-height: 40%;
+                overflow-y: auto;
+            }
+            
+            #modal-content {
+                width: 95%;
+                height: 90vh;
+            }
+            
+            #modal-search {
+                width: 120px;
+            }
+            
+            .modal-header {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            
+            .detail-table {
+                font-size: 12px;
+            }
+            
+            .detail-table th, .detail-table td {
+                padding: 8px 4px;
+            }
+        }
+
+        /* === MAP MARKER STYLES === */
+        .device-marker {
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.8);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .device-marker:hover {
+            transform: scale(1.3);
+            z-index: 1000 !important;
+        }
+        .device-marker-emoji {
+            line-height: 1;
+            text-align: center;
+        }
+        .device-marker-emoji:hover {
+            transform: scale(1.4);
+        }
+        .device-marker-emoji.marker-online {
+            animation: none;
+        }
+        .device-marker-emoji.marker-amber {
+            animation: pulse-emoji-amber 2s infinite;
+        }
+        .device-marker-emoji.marker-offline {
+            animation: flash-emoji-red 0.8s infinite alternate;
+        }
+        @keyframes pulse-emoji-amber {
+            0% { opacity: 1; filter: drop-shadow(0 0 8px #ffc107); }
+            50% { opacity: 0.7; filter: drop-shadow(0 0 4px #ffc107); }
+            100% { opacity: 1; filter: drop-shadow(0 0 8px #ffc107); }
+        }
+        @keyframes flash-emoji-red {
+            from { opacity: 1; filter: drop-shadow(0 0 10px #f8312f); }
+            to { opacity: 0.4; filter: drop-shadow(0 0 2px #f8312f); }
+        }
+        .marker-online { background: #00d26a; }
+        .marker-amber { background: #ffc107; animation: pulse-amber 2s infinite; }
+        .marker-offline { background: #f8312f; animation: flash-red 0.8s infinite alternate; }
     </style>
 </head>
 <body>
@@ -385,7 +527,23 @@
         var currentMapLayer; 
         let currentMapIndex=0, isPaused=false;
         
-        async function loadMapConfig(){ try{const r=await fetch('/api/map-config');if(r.ok)maps=await r.json();}catch(e){} loadMap(0); }
+        async function loadMapConfig(){ 
+            try{
+                const r=await fetch('/api/map-config');
+                if(r.ok) {
+                    const allMaps = await r.json();
+                    // Filter to only active maps
+                    maps = allMaps.filter(m => m.active !== false);
+                    if(maps.length === 0) {
+                        // Fallback if no maps are active
+                        maps = [{id:'T-G.PNG', name:'T Site - Ground', active:true}];
+                    }
+                }
+            }catch(e){
+                console.error('Failed to load map config:', e);
+            } 
+            loadMap(0); 
+        }
         function nextMap(){ currentMapIndex=(currentMapIndex+1)%maps.length; loadMap(currentMapIndex); }
         function loadMap(i){ 
             const c=maps[i]; 
@@ -396,7 +554,132 @@
                 if(currentMapLayer) map.removeLayer(currentMapLayer); 
                 currentMapLayer=L.imageOverlay(c.id,b).addTo(map); 
                 map.fitBounds(b); 
+                // Re-plot devices when map changes
+                plotDevicesOnMap();
             } 
+        }
+
+        // === DEVICE MARKERS ON MAP ===
+        let currentMapBounds = null;
+        
+        // Device type emoji mapping
+        const deviceEmojis = {
+            'server': '🖥️',
+            'esxi': '🗄️',
+            'nvr': '📹',
+            'firewall': '🛡️',
+            'switch': '🔀',
+            'wap': '📡',
+            'printer': '🖨️',
+            'cctv': '📷',
+            'telephone': '☏',
+            'access_control': '🚪',
+            'hardware': '💾',
+            'service': '☁️',
+            'cloud': '☁️',
+            'default': '📍'
+        };
+        
+        function getDeviceEmoji(type) {
+            const t = getUiType(type);
+            return deviceEmojis[t] || deviceEmojis['default'];
+        }
+        
+        function plotDevicesOnMap() {
+            devicesLayer.clearLayers();
+            
+            const currentMap = maps[currentMapIndex];
+            if (!currentMap || !cachedDevices.length) return;
+            
+            // Filter devices that belong to this map
+            const mapDevices = cachedDevices.filter(d => {
+                // Check if device has floor_id assignment and coordinates
+                // floor_id should match the map id (e.g., "T-G.PNG")
+                if (!d.floor_id || d.floor_id === 'nomap') return false;
+                
+                // Get coordinates - could be in map_coordinates object or direct x/y
+                let x, y;
+                if (d.map_coordinates && typeof d.map_coordinates === 'object') {
+                    x = d.map_coordinates.x;
+                    y = d.map_coordinates.y;
+                } else if (d.x !== undefined && d.y !== undefined) {
+                    x = d.x;
+                    y = d.y;
+                }
+                
+                // Skip if no valid coordinates or coordinates are 0,0
+                if (x === undefined || y === undefined) return false;
+                if (x === 0 && y === 0) return false;
+                
+                // Match floor_id to current map id (case-insensitive)
+                const deviceFloor = String(d.floor_id).toLowerCase();
+                const currentMapId = String(currentMap.id).toLowerCase();
+                return deviceFloor === currentMapId;
+            });
+
+            mapDevices.forEach(d => {
+                // Get coordinates
+                let x, y;
+                if (d.map_coordinates && typeof d.map_coordinates === 'object') {
+                    x = parseFloat(d.map_coordinates.x);
+                    y = parseFloat(d.map_coordinates.y);
+                } else {
+                    x = parseFloat(d.x);
+                    y = parseFloat(d.y);
+                }
+                
+                // Determine status color
+                let statusColor = '#00d26a'; // online green
+                let statusClass = 'marker-online';
+                if (d.status === 'offline') {
+                    statusColor = '#f8312f';
+                    statusClass = 'marker-offline';
+                } else if (d.status === 'amber') {
+                    statusColor = '#ffc107';
+                    statusClass = 'marker-amber';
+                }
+                
+                // Get device type for emoji
+                const t = getUiType(d.type);
+                const emoji = getDeviceEmoji(d.type);
+                
+                // Size based on type
+                let size = 24;
+                if (['server', 'nvr', 'esxi', 'firewall'].includes(t)) size = 28;
+                if (['cctv'].includes(t)) size = 20;
+                
+                // Create custom div icon with emoji
+                const icon = L.divIcon({
+                    className: 'device-marker-wrapper',
+                    html: `<div class="device-marker-emoji ${statusClass}" style="
+                        font-size: ${size}px;
+                        text-shadow: 0 0 8px ${statusColor}, 0 0 12px ${statusColor};
+                        filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+                        cursor: pointer;
+                        transition: transform 0.2s;
+                    ">${emoji}</div>`,
+                    iconSize: [size, size],
+                    iconAnchor: [size/2, size/2]
+                });
+                
+                // For L.CRS.Simple with image overlay, coordinates are [y, x] (row, column)
+                const marker = L.marker([y, x], { icon: icon });
+                
+                // Build popup content
+                const det = safeParseDetails(d.details);
+                let popupContent = `
+                    <div style="min-width:150px;font-family:'Inter',sans-serif;">
+                        <div style="font-weight:600;font-size:14px;margin-bottom:5px;color:#333;">${emoji} ${d.name}</div>
+                        <div style="font-size:11px;color:#666;margin-bottom:3px;">${t.toUpperCase()}</div>
+                        <div style="font-size:12px;color:${d.status==='online'?'#00d26a':(d.status==='amber'?'#ffc107':'#f8312f')};font-weight:500;">${(d.status||'unknown').toUpperCase()}</div>
+                        ${d.ip ? `<div style="font-size:11px;color:#888;margin-top:3px;font-family:monospace;">${d.ip}</div>` : ''}
+                        ${det.note ? `<div style="font-size:10px;color:#999;margin-top:5px;">${det.note}</div>` : ''}
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+                marker.addTo(devicesLayer);
+            });
         }
         function togglePause(){ isPaused=!isPaused; document.getElementById('pause-btn').innerText=isPaused?"▶️ Play":"⏸️ Pause"; if(!isPaused)updateDashboard(); }
         setInterval(()=>{if(!isPaused)nextMap();},15000);
@@ -609,6 +892,9 @@
                     if(ce) ce.innerText=`(${c[k]})`; 
                 }); 
                 document.getElementById('firewall-content').innerHTML = h.firewall || '<div style="text-align:center;color:#666;">No Firewall Found</div>';
+                
+                // Update device markers on the map
+                plotDevicesOnMap();
             
             }catch(e){ console.error(e); } 
         }
