@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Reprographics - Printer Status</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        
+        /* Header */
+        .header {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header h1 span {
+            font-size: 24px;
+        }
+        
+        .status-summary {
+            display: flex;
+            gap: 12px;
+            font-size: 13px;
+        }
+        
+        .status-count {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+        }
+        
+        .status-count.ok { color: #00d26a; }
+        .status-count.warning { color: #ffc107; }
+        .status-count.error { color: #f8312f; }
+        
+        /* Main Content */
+        .container {
+            padding: 16px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        /* Last Updated */
+        .last-updated {
+            text-align: center;
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 16px;
+        }
+        
+        /* Printer Cards */
+        .printer-card {
+            background: rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .printer-card:active {
+            transform: scale(0.98);
+        }
+        
+        .printer-card.status-online {
+            border-left: 4px solid #00d26a;
+        }
+        
+        .printer-card.status-amber {
+            border-left: 4px solid #ffc107;
+            background: rgba(255, 193, 7, 0.1);
+        }
+        
+        .printer-card.status-offline {
+            border-left: 4px solid #f8312f;
+            background: rgba(248, 49, 47, 0.1);
+            animation: pulse-error 2s infinite;
+        }
+        
+        @keyframes pulse-error {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .printer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        
+        .printer-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 4px 0;
+        }
+        
+        .printer-location {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-badge.online {
+            background: rgba(0, 210, 106, 0.2);
+            color: #00d26a;
+        }
+        
+        .status-badge.amber {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+        
+        .status-badge.offline {
+            background: rgba(248, 49, 47, 0.2);
+            color: #f8312f;
+        }
+        
+        /* Error Message */
+        .error-message {
+            background: rgba(248, 49, 47, 0.2);
+            color: #ff6b6b;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Toner Section */
+        .toner-section {
+            margin-top: 12px;
+        }
+        
+        .toner-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        
+        .toner-item {
+            text-align: center;
+        }
+        
+        .toner-bar-container {
+            height: 60px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+        
+        .toner-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-radius: 0 0 8px 8px;
+            transition: height 0.5s ease;
+        }
+        
+        .toner-bar.cyan { background: linear-gradient(to top, #00d2ff, #00a8cc); }
+        .toner-bar.magenta { background: linear-gradient(to top, #ff00d4, #cc00aa); }
+        .toner-bar.yellow { background: linear-gradient(to top, #ffea00, #ccbb00); }
+        .toner-bar.black { background: linear-gradient(to top, #666, #333); }
+        
+        .toner-percent {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            font-weight: 700;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+        
+        .toner-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.7);
+            text-transform: uppercase;
+        }
+        
+        .toner-item.low .toner-bar-container {
+            animation: toner-warning 1s infinite;
+        }
+        
+        @keyframes toner-warning {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
+            50% { box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.2); }
+        }
+        
+        /* IP Address */
+        .printer-ip {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .ip-address {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .open-link {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .open-link:active {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .empty-state span {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 16px;
+        }
+        
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #00d26a;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Pull to Refresh Indicator */
+        .refresh-indicator {
+            text-align: center;
+            padding: 12px;
+            color: rgba(255,255,255,0.5);
+            font-size: 12px;
+            display: none;
+        }
+        
+        /* Black & White Printer Indicator */
+        .bw-indicator {
+            background: rgba(255,255,255,0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.7);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .bw-bar {
+            flex: 1;
+            height: 8px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .bw-fill {
+            height: 100%;
+            background: linear-gradient(to right, #666, #999);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1><span>🖨️</span> Reprographics</h1>
+            <div class="status-summary">
+                <div class="status-count ok" id="count-ok">
+                    <span>●</span> <span id="ok-num">0</span>
+                </div>
+                <div class="status-count warning" id="count-warning">
+                    <span>●</span> <span id="warning-num">0</span>
+                </div>
+                <div class="status-count error" id="count-error">
+                    <span>●</span> <span id="error-num">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="last-updated">Last updated: <span id="last-update">--:--</span></div>
+        <div class="refresh-indicator" id="refresh-indicator">↓ Pull to refresh</div>
+        <div id="printer-list">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <div>Loading printers...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = window.location.hostname.includes('render') 
+            ? 'https://khs-v4w8.onrender.com' 
+            : '';
+        const REFRESH_INTERVAL = 10000; // 10 seconds
+        
+        let printers = [];
+        let reproConfig = {}; // Stores which printers are visible
+        
+        // Parse printer details to extract toner levels and errors
+        function parsePrinterDetails(device) {
+            const details = device.details || {};
+            let rawNote = '';
+            
+            // Handle details that might be string or object
+            if (typeof details === 'string') {
+                try {
+                    const parsed = JSON.parse(details);
+                    rawNote = parsed.note || '';
+                } catch {
+                    rawNote = details;
+                }
+            } else {
+                rawNote = details.note || '';
+            }
+            
+            // Parse toner levels
+            const tonerRegex = /([CMYK]):(\w+)%?/g;
+            const toner = {};
+            let match;
+            
+            while ((match = tonerRegex.exec(rawNote)) !== null) {
+                toner[match[1]] = match[2] === 'OK' ? 100 : parseInt(match[2]) || 0;
+            }
+            
+            // Extract error message
+            let errorMsg = rawNote
+                .replace(/([CMYK]):\w+%?/g, '')
+                .replace(/\|/g, '')
+                .trim();
+            
+            if (errorMsg.length < 3 || errorMsg.includes('OK')) {
+                errorMsg = '';
+            }
+            
+            // Determine status
+            let status = device.status || 'offline';
+            const isLowToner = Object.values(toner).some(v => v < 10);
+            const hasError = errorMsg.toLowerCase().match(/(jam|empty|no paper|error|offline|door|misfeed)/);
+            
+            if (hasError) {
+                status = 'offline';
+            } else if (isLowToner) {
+                status = 'amber';
+            } else if (device.status === 'online') {
+                status = 'online';
+            }
+            
+            return {
+                name: device.name || 'Unknown Printer',
+                ip: device.ip || '',
+                floor: device.floor_id || 'Unknown',
+                toner,
+                errorMsg,
+                status,
+                isColor: Object.keys(toner).length > 1,
+                lastSeen: device.last_seen || device.updatedAt
+            };
+        }
+        
+        // Get floor display name
+        function getFloorName(floorId) {
+            const floors = {
+                'T-G.PNG': 'T Block - Ground',
+                'T-1.PNG': 'T Block - 1st Floor',
+                'T-M.PNG': 'T Block - Mezzanine',
+                'K-G.PNG': 'K Block - Ground',
+                'K-1.PNG': 'K Block - 1st Floor',
+                'K-2.PNG': 'K Block - 2nd Floor',
+                'nomap': 'Infrastructure'
+            };
+            return floors[floorId] || floorId || 'Unknown Location';
+        }
+        
+        // Render a single printer card
+        function renderPrinterCard(printer) {
+            const tonerHtml = printer.isColor ? `
+                <div class="toner-section">
+                    <div class="toner-grid">
+                        ${['C', 'M', 'Y', 'K'].map(color => {
+                            const level = printer.toner[color];
+                            if (level === undefined) return '';
+                            const isLow = level < 10;
+                            const colorClass = {C: 'cyan', M: 'magenta', Y: 'yellow', K: 'black'}[color];
+                            const colorName = {C: 'Cyan', M: 'Magenta', Y: 'Yellow', K: 'Black'}[color];
+                            return `
+                                <div class="toner-item ${isLow ? 'low' : ''}">
+                                    <div class="toner-bar-container">
+                                        <div class="toner-bar ${colorClass}" style="height: ${level}%"></div>
+                                        <span class="toner-percent">${level}%</span>
+                                    </div>
+                                    <div class="toner-label">${colorName}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            ` : (printer.toner.K !== undefined ? `
+                <div class="bw-indicator">
+                    <span>Toner</span>
+                    <div class="bw-bar">
+                        <div class="bw-fill" style="width: ${printer.toner.K}%"></div>
+                    </div>
+                    <span>${printer.toner.K}%</span>
+                </div>
+            ` : '');
+            
+            const errorHtml = printer.errorMsg ? `
+                <div class="error-message">
+                    <span>⚠️</span>
+                    <span>${printer.errorMsg}</span>
+                </div>
+            ` : '';
+            
+            const ipLink = printer.ip.startsWith('http') ? printer.ip : `http://${printer.ip}`;
+            
+            return `
+                <div class="printer-card status-${printer.status}">
+                    <div class="printer-header">
+                        <div>
+                            <h3 class="printer-name">${printer.name}</h3>
+                            <div class="printer-location">
+                                <span>📍</span>
+                                <span>${getFloorName(printer.floor)}</span>
+                            </div>
+                        </div>
+                        <span class="status-badge ${printer.status}">
+                            ${printer.status === 'online' ? '✓ OK' : printer.status === 'amber' ? '⚠ Low' : '✕ Error'}
+                        </span>
+                    </div>
+                    ${errorHtml}
+                    ${tonerHtml}
+                    <div class="printer-ip">
+                        <span class="ip-address">${printer.ip}</span>
+                        <a href="${ipLink}" target="_blank" class="open-link">
+                            <span>Open</span>
+                            <span>↗</span>
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Render all printers
+        function renderPrinters() {
+            const container = document.getElementById('printer-list');
+            
+            if (printers.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <span>🖨️</span>
+                        <div>No printers found</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Sort: errors first, then warnings, then OK (and alphabetically within)
+            const sorted = [...printers].sort((a, b) => {
+                const statusOrder = { offline: 0, amber: 1, online: 2 };
+                const orderDiff = statusOrder[a.status] - statusOrder[b.status];
+                if (orderDiff !== 0) return orderDiff;
+                return a.name.localeCompare(b.name);
+            });
+            
+            container.innerHTML = sorted.map(renderPrinterCard).join('');
+            
+            // Update counts
+            const counts = { online: 0, amber: 0, offline: 0 };
+            printers.forEach(p => counts[p.status]++);
+            
+            document.getElementById('ok-num').textContent = counts.online;
+            document.getElementById('warning-num').textContent = counts.amber;
+            document.getElementById('error-num').textContent = counts.offline;
+            
+            // Update timestamp
+            document.getElementById('last-update').textContent = 
+                new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        // Fetch printers from API
+        async function fetchPrinters() {
+            try {
+                // Fetch repro config (which printers to show)
+                try {
+                    const configResponse = await fetch(`${API_BASE}/api/repro-config`);
+                    if (configResponse.ok) {
+                        reproConfig = await configResponse.json();
+                    }
+                } catch (e) {
+                    reproConfig = {}; // Default: show all
+                }
+                
+                const response = await fetch(`${API_BASE}/api/devices`);
+                if (!response.ok) throw new Error('Failed to fetch');
+                
+                const devices = await response.json();
+                
+                // Filter to only printers that are enabled in repro config
+                // If reproConfig is empty or printer IP not in config, default to visible
+                printers = devices
+                    .filter(d => {
+                        if (!d.type || d.type.toLowerCase() !== 'printer') return false;
+                        // Check if this printer is enabled (default: true if not specified)
+                        const ip = d.ip || '';
+                        return reproConfig[ip] !== false;
+                    })
+                    .map(parsePrinterDetails);
+                
+                renderPrinters();
+            } catch (error) {
+                console.error('Error fetching printers:', error);
+                document.getElementById('printer-list').innerHTML = `
+                    <div class="empty-state">
+                        <span>⚠️</span>
+                        <div>Failed to load printers</div>
+                        <div style="margin-top: 8px; font-size: 12px;">Tap to retry</div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchPrinters();
+            setInterval(fetchPrinters, REFRESH_INTERVAL);
+            
+            // Tap to refresh on error
+            document.getElementById('printer-list').addEventListener('click', (e) => {
+                if (e.target.closest('.empty-state')) {
+                    document.getElementById('printer-list').innerHTML = `
+                        <div class="loading">
+                            <div class="loading-spinner"></div>
+                            <div>Loading printers...</div>
+                        </div>
+                    `;
+                    fetchPrinters();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
