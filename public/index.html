@@ -39,10 +39,11 @@
         .gone { display: none !important; }
 
         /* === SERVICE ITEMS === */
-        .service-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #333; font-size: 13px; color: #ccc; }
+        .service-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #333; font-size: 13px; color: #ccc; cursor: pointer; transition: background 0.2s; }
+        .service-item:hover { background: rgba(255,255,255,0.05); }
         .service-sub { font-size: 11px; color: #777; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
         
-        /* === FIREWALL SPECIFIC (FIXED) === */
+        /* === FIREWALL === */
         .fw-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #333; font-size: 13px; }
         .fw-row:last-child { border-bottom: none; }
         .fw-label { color: #888; }
@@ -56,7 +57,7 @@
         @keyframes pulse-amber { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
         @keyframes flash-red { from { opacity: 1; box-shadow: 0 0 10px rgba(248, 49, 47, 0.8); } to { opacity: 0.3; box-shadow: 0 0 2px rgba(248, 49, 47, 0.2); } }
 
-        /* === STAT BARS (CPU/RAM/TONER) === */
+        /* === STAT BARS & DRIVE BLOCKS === */
         .stat-container { margin-top: 6px; width: 100%; }
         .stat-row, .toner-row { display: flex; align-items: center; margin-bottom: 3px; }
         .stat-label { font-size: 10px; color: #888; width: 30px; }
@@ -72,6 +73,9 @@
         .fill-yellow { background: #ffea00; }
         .fill-black { background: #888; }
 
+        /* Drive Block Style */
+        .drive-block { display: inline-block; height: 100%; border-right: 2px solid #252525; box-sizing: border-box; }
+
         /* === TICKER ANIMATION === */
         .ticker-mask { flex-grow: 1; overflow-y: auto; position: relative; mask-image: linear-gradient(to bottom, black 90%, transparent 100%); z-index: 10; scrollbar-width: none; }
         .ticker-mask::-webkit-scrollbar { display: none; }
@@ -82,34 +86,83 @@
         .badge { font-size: 11px; font-weight: bold; padding: 5px 10px; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; margin-right: 15px; cursor: pointer; user-select: none; transition: all 0.2s; }
         .badge-local { background: rgba(0, 210, 106, 0.15); color: #00d26a; border: 1px solid #00d26a; }
         .badge-cloud { background: rgba(253, 126, 20, 0.15); color: #fd7e14; border: 1px solid #fd7e14; }
-        .weather-box { display: flex; flex-direction: column; align-items: flex-end; font-size: 12px; color: #888; text-align: right; }
-        .weather-main { display: flex; align-items: center; gap: 8px; font-size: 16px; color: #fff; font-weight: 600; }
+        .weather-box { display: flex; flex-direction: column; align-items: flex-end; font-size: 14px; color: #aaa; text-align: right; cursor: pointer; padding: 10px 14px; border-radius: 8px; transition: all 0.2s; user-select: none; }
+        .weather-box:hover { background: rgba(255,255,255,0.06); color: #fff; }
+        .weather-main { display: flex; align-items: center; gap: 10px; font-size: 22px; color: #fff; font-weight: 600; }
+        .weather-box .clock-display { font-size: 26px; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+        .weather-box .date-display { font-size: 15px; margin-top: 4px; color: #aaa; }
+        .weather-box .weather-temp { font-size: 22px; }
+        .weather-box.theme-retro { font-family: 'Courier New', monospace; }
+        .weather-box.theme-retro .clock-display { font-size: 28px; color: #0f0; text-shadow: 0 0 10px #0f0; }
+        .weather-box.theme-retro .date-display { color: #0a0; }
+        .weather-box.theme-retro .weather-temp { color: #0f0; }
+        .weather-box.theme-analogue { font-family: Georgia, serif; }
+        .weather-box.theme-analogue .clock-display { font-size: 24px; font-weight: 300; letter-spacing: 0.08em; }
+        .weather-box.theme-analogue .date-display { font-style: italic; font-size: 14px; }
+        .weather-box.theme-cartoon { font-family: 'Comic Sans MS', 'Chalkboard', cursive; }
+        .weather-box.theme-cartoon .clock-display { font-size: 28px; color: #ff6b9d; text-shadow: 2px 2px 0 #333; }
+        .weather-box.theme-cartoon .date-display { color: #6b8cff; font-weight: bold; }
+        .weather-box.theme-cartoon .weather-temp { color: #ffb86b; }
+        .weather-box.theme-matrix { font-family: 'Courier New', monospace; }
+        .weather-box.theme-matrix .clock-display { font-size: 28px; color: #0f0; text-shadow: 0 0 10px #0f0; }
+        .weather-box.theme-matrix .date-display { color: #0a0; }
+        .weather-box.theme-matrix .weather-temp { color: #0f0; }
         
         /* === MAP & CONTROLS === */
-        #map-wrapper { flex-grow: 1; position: relative; width: 100%; height: 100%; }
-        #map { height: 100%; width: 100%; background: #121212; }
+        #map-wrapper { flex-grow: 1; position: relative; width: 100%; height: 100%; overflow: hidden; }
+        #map-wrapper.map-theme-default { background: #ffffff; }
+        #map-wrapper.map-theme-retro { background: #0a120a; }
+        #map-wrapper.map-theme-analogue { background: #1a1814; }
+        #map-wrapper.map-theme-cartoon { background: #1e1a2e; }
+        #map-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+        #map-wrapper.map-theme-default #map-bg { background: #ffffff; }
+        #map-wrapper.map-theme-retro #map-bg { background: #0a120a; }
+        #map-wrapper.map-theme-retro #map-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, rgba(0,40,0,0.06) 100%); }
+        #map-wrapper.map-theme-analogue #map-bg { background: #1a1814; }
+        #map-wrapper.map-theme-cartoon #map-bg { background: #1e1a2e; }
+        #map-matrix-rain { display: none; position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+        #map-wrapper.map-theme-retro #map-matrix-rain { display: block; }
+        #matrix-rain-canvas { display: block; width: 100%; height: 100%; }
+        #map-wrapper .leaflet-container { background: transparent !important; }
+        #map { height: 100%; width: 100%; position: relative; z-index: 1; background: transparent !important; }
         #map-title { position: absolute; top: 20px; right: 20px; background: rgba(20, 20, 20, 0.85); color: #e0e0e0; padding: 8px 20px; border-radius: 6px; z-index: 1000; backdrop-filter: blur(5px); border: 1px solid #444; }
         #map-controls { position: absolute; bottom: 20px; right: 20px; z-index: 1000; display: flex; gap: 10px; }
         .control-btn { background: rgba(20, 20, 20, 0.85); color: #e0e0e0; border: 1px solid #444; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-size: 14px; backdrop-filter: blur(5px); }
         .header-controls { display: flex; align-items: center; gap: 10px; }
-        .toggle-btn, .expand-btn { cursor: pointer; font-size: 16px; opacity: 0.5; transition: all 0.2s; padding: 4px; border-radius: 4px; }
-        .toggle-btn:hover, .expand-btn:hover { opacity: 1; background: rgba(255,255,255,0.1); }
-        .hidden-active { opacity: 0.3; filter: grayscale(100%); }
+        .toggle-btn, .expand-btn { cursor: pointer; font-size: 16px; opacity: 1; transition: all 0.2s; padding: 5px 6px; border-radius: 6px; }
+        .toggle-btn { background: rgba(0,210,106,0.2); border: 1px solid rgba(0,210,106,0.4); box-shadow: 0 0 8px rgba(0,210,106,0.15); }
+        .toggle-btn:hover, .expand-btn:hover { opacity: 1; background: rgba(255,255,255,0.15); }
+        .expand-btn { background: rgba(255,255,255,0.06); }
+        .toggle-btn.hidden-active { opacity: 0.4; filter: grayscale(100%); background: rgba(255,255,255,0.05); border-color: transparent; box-shadow: none; }
         .expanded-active { color: #00d26a; opacity: 1; transform: scale(1.1); font-weight: bold; }
         .force-hide { display: none; }
         .big-stat { font-size: 48px; font-weight: 300; color: #fff; letter-spacing: -2px; line-height: 1; }
         .unit { font-size: 13px; color: #666; font-weight: 500; margin-top: 5px; display: block; }
         .version-footer { margin-top: auto; text-align: center; font-size: 11px; color: #444; padding-top: 20px; border-top: 1px solid #2a2a2a; }
 
-        /* === MODAL === */
-        #modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-        #modal-overlay.active { display: flex; }
+        /* === MODALS (MAIN LIST & POP-OUT) === */
+        /* Universal Overlay Class */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal-overlay.active { display: flex; }
+        #device-detail-modal { z-index: 5500; }
+        
+        /* Main List Modal */
         #modal-content { background: #1e1e1e; width: 85%; max-width: 1200px; height: 85vh; border-radius: 12px; border: 1px solid #333; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .modal-header { padding: 20px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; background: #252525; border-radius: 12px 12px 0 0; }
         .modal-header h2 { margin: 0; font-size: 24px; color: #fff; }
         .modal-close { cursor: pointer; font-size: 28px; color: #888; margin-left: 15px; } .modal-close:hover { color: #fff; }
         .modal-body { flex: 1; overflow-y: auto; padding: 20px; }
         #modal-search { background: #333; border: 1px solid #444; padding: 8px 12px; color: #fff; border-radius: 6px; font-size: 14px; width: 250px; outline: none; }
+        
+        /* Device Detail Pop-Out */
+        #device-detail-box { background: #1e1e1e; width: 500px; max-height: 90vh; border-radius: 12px; border: 1px solid #444; display: flex; flex-direction: column; box-shadow: 0 25px 60px rgba(0,0,0,0.8); z-index: 6000; }
+        .dd-header { padding: 20px; background: #252525; border-bottom: 1px solid #333; border-radius: 12px 12px 0 0; display:flex; justify-content:space-between; align-items:flex-start; }
+        .dd-body { padding: 25px; overflow-y: auto; }
+        .dd-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; border-bottom: 1px solid #2a2a2a; padding-bottom: 8px; }
+        .dd-label { color: #888; font-weight: 500; }
+        .dd-value { color: #eee; font-family: monospace; text-align: right; font-weight: bold; }
+        .dd-section { margin-top: 20px; margin-bottom: 10px; font-size: 12px; color: #00d26a; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+
         .detail-table { width: 100%; border-collapse: collapse; color: #ccc; font-size: 14px; }
         .detail-table th { text-align: left; padding: 12px; border-bottom: 1px solid #444; color: #888; text-transform: uppercase; font-size: 12px; position: sticky; top: 0; background: #1e1e1e; cursor: pointer; }
         .detail-table td { padding: 12px; border-bottom: 1px solid #333; vertical-align: top; }
@@ -121,154 +174,96 @@
 
         /* === MOBILE RESPONSIVE === */
         @media screen and (max-width: 900px) {
-            body {
-                flex-direction: column;
-                overflow-y: auto;
-                height: auto;
-                min-height: 100vh;
-            }
-            
-            .sidebar {
-                width: 100%;
-                height: auto;
-                max-height: 25vh;
-                border: none !important;
-                padding: 10px;
-                overflow-y: auto;
-            }
-            
-            #sidebar-left {
-                order: 1;
-                border-bottom: 1px solid #333 !important;
-                border-right: none !important;
-            }
-            
-            #sidebar-right {
-                order: 2;
-                border-bottom: 1px solid #333 !important;
-                border-left: none !important;
-            }
-            
-            #main-content {
-                order: 3;
-                flex-grow: 0;
-                height: 50vh;
-                min-height: 50vh;
-            }
-            
-            .page-header {
-                padding: 10px 15px;
-                font-size: 16px;
-            }
-            
-            .page-header .weather-box {
-                display: none;
-            }
-            
-            #map-wrapper {
-                height: calc(50vh - 60px);
-            }
-            
-            .ticker-mask {
-                mask-image: none;
-                overflow-y: auto;
-            }
-            
-            .ticker-content {
-                position: relative;
-                padding-bottom: 0;
-            }
-            
-            .card {
-                margin-bottom: 10px;
-                padding: 10px;
-            }
-            
-            .list-window {
-                max-height: 150px;
-            }
-            
-            .version-footer {
-                display: none;
-            }
-            
-            .fixed-zone {
-                max-height: 40%;
-                overflow-y: auto;
-            }
-            
-            #modal-content {
-                width: 95%;
-                height: 90vh;
-            }
-            
-            #modal-search {
-                width: 120px;
-            }
-            
-            .modal-header {
-                flex-wrap: wrap;
-                gap: 10px;
-            }
-            
-            .detail-table {
-                font-size: 12px;
-            }
-            
-            .detail-table th, .detail-table td {
-                padding: 8px 4px;
-            }
+            body { flex-direction: column; overflow-y: auto; height: auto; min-height: 100vh; }
+            .sidebar { width: 100%; height: auto; max-height: 25vh; border: none !important; padding: 10px; overflow-y: auto; }
+            #sidebar-left { order: 1; border-bottom: 1px solid #333 !important; border-right: none !important; }
+            #sidebar-right { order: 2; border-bottom: 1px solid #333 !important; border-left: none !important; }
+            #main-content { order: 3; flex-grow: 0; height: 50vh; min-height: 50vh; }
+            .page-header { padding: 10px 15px; font-size: 16px; }
+            .page-header .weather-box { display: none; }
+            #map-wrapper { height: calc(50vh - 60px); }
+            .ticker-mask { mask-image: none; overflow-y: auto; }
+            .ticker-content { position: relative; padding-bottom: 0; }
+            .card { margin-bottom: 10px; padding: 10px; }
+            .list-window { max-height: 150px; }
+            .version-footer { display: none; }
+            .fixed-zone { max-height: 40%; overflow-y: auto; }
+            #modal-content { width: 95%; height: 90vh; }
+            #device-detail-box { width: 95%; }
+            #modal-search { width: 120px; }
+            .modal-header { flex-wrap: wrap; gap: 10px; }
+            .detail-table { font-size: 12px; }
+            .detail-table th, .detail-table td { padding: 8px 4px; }
         }
 
         /* === MAP MARKER STYLES === */
-        .device-marker {
-            border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.8);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        .device-marker:hover {
-            transform: scale(1.3);
-            z-index: 1000 !important;
-        }
-        .device-marker-emoji {
-            line-height: 1;
-            text-align: center;
-        }
-        .device-marker-emoji:hover {
-            transform: scale(1.4);
-        }
-        .device-marker-emoji.marker-online {
-            animation: none;
-        }
-        .device-marker-emoji.marker-amber {
-            animation: pulse-emoji-amber 2s infinite;
-        }
-        .device-marker-emoji.marker-offline {
-            animation: flash-emoji-red 0.8s infinite alternate;
-        }
-        @keyframes pulse-emoji-amber {
-            0% { opacity: 1; filter: drop-shadow(0 0 8px #ffc107); }
-            50% { opacity: 0.7; filter: drop-shadow(0 0 4px #ffc107); }
-            100% { opacity: 1; filter: drop-shadow(0 0 8px #ffc107); }
-        }
-        @keyframes flash-emoji-red {
-            from { opacity: 1; filter: drop-shadow(0 0 10px #f8312f); }
-            to { opacity: 0.4; filter: drop-shadow(0 0 2px #f8312f); }
-        }
+        .device-marker { border-radius: 50%; border: 2px solid rgba(255,255,255,0.8); box-shadow: 0 2px 8px rgba(0,0,0,0.5); cursor: pointer; transition: transform 0.2s; }
+        .device-marker:hover { transform: scale(1.3); z-index: 1000 !important; }
+        .device-marker-emoji { line-height: 1; text-align: center; }
+        .device-marker-emoji:hover { transform: scale(1.4); }
+        .device-marker-emoji.marker-online { animation: none; }
+        .device-marker-emoji.marker-amber { animation: pulse-emoji-amber 2s infinite; }
+        .device-marker-emoji.marker-offline { animation: flash-emoji-red 0.8s infinite alternate; }
+        @keyframes pulse-emoji-amber { 0% { opacity: 1; filter: drop-shadow(0 0 8px #ffc107); } 50% { opacity: 0.7; filter: drop-shadow(0 0 4px #ffc107); } 100% { opacity: 1; filter: drop-shadow(0 0 8px #ffc107); } }
+        @keyframes flash-emoji-red { from { opacity: 1; filter: drop-shadow(0 0 10px #f8312f); } to { opacity: 0.4; filter: drop-shadow(0 0 2px #f8312f); } }
         .marker-online { background: #00d26a; }
         .marker-amber { background: #ffc107; animation: pulse-amber 2s infinite; }
         .marker-offline { background: #f8312f; animation: flash-red 0.8s infinite alternate; }
+		
+		/* === CCTV PILLS (Streaming/Bandwidth Badges) === */
+.cctv-pill {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-right: 5px;
+    border: 1px solid #333;
+}
+        .pill-active { background: #1b3a24; color: #4cd964; border-color: #2d5a36; } /* Streaming */
+.pill-idle   { background: #1e1e1e; color: #777; border-color: #333; }      /* Idle */
+.pill-data   { background: #1b283a; color: #007aff; border-color: #2d3f5a; } /* Bandwidth */
+
+        /* === HISTORY CARD === */
+        .card-history { border-top: 3px solid #17a2b8; }
+        .history-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #333; font-size: 12px; }
+        .history-row:last-child { border-bottom: none; }
+        .history-period { color: #888; font-weight: 600; }
+        .history-ok { color: #00d26a; }
+        .history-issues { color: #ffc107; }
+        .history-fails { color: #f8312f; }
+        .history-ack { color: #888; font-size: 11px; }
+        .history-row.clickable { cursor: pointer; }
+        .history-row.clickable:hover { background: rgba(255,255,255,0.05); border-radius: 4px; }
+
+        /* === MAP: ACKNOWLEDGED / PROBLEM ZONE === */
+        .marker-acknowledged { border: 2px dashed #888 !important; opacity: 0.9; }
+        .problem-zone-circle { fill: none; stroke: #f8312f; stroke-width: 2; stroke-opacity: 0.6; stroke-dasharray: 4 4; }
+        .fault-zone-label { font-size: 11px; font-weight: 600; color: #fff !important; text-shadow: 0 1px 3px #000, 0 0 8px rgba(0,0,0,0.8) !important; white-space: nowrap; pointer-events: none; background: rgba(0,0,0,0.6) !important; border: 1px solid #f8312f !important; padding: 4px 8px !important; border-radius: 4px !important; }
     </style>
 </head>
 <body>
-    <div id="modal-overlay">
+
+<div id="device-detail-modal" class="modal-overlay" style="display:none;">
+    <div id="device-detail-box">
+        <div class="dd-header">
+            <div>
+                <h2 id="dd-name" style="color:#fff; margin:0; font-size:20px;">Device Name</h2>
+                <span id="dd-sub" style="font-size:12px; color:#888;">TYPE • IP</span>
+            </div>
+            <span class="modal-close" onclick="document.getElementById('device-detail-modal').classList.remove('active'); setTimeout(()=>document.getElementById('device-detail-modal').style.display='none', 200);">×</span>
+        </div>
+        <div class="dd-body" id="dd-content">
+            </div>
+    </div>
+</div>
+
+    <div id="modal-overlay" class="modal-overlay">
         <div id="modal-content">
             <div class="modal-header">
                 <div style="display:flex; align-items:center; gap:20px;">
                     <h2 id="modal-title">Device List</h2>
                     <input type="text" id="modal-search" placeholder="Search..." onkeyup="renderModalContent()">
+                    <button class="control-btn" id="modal-refresh-btn" onclick="refreshModalData()" title="Refresh this list from server">🔄 Refresh</button>
                     <button class="control-btn" onclick="exportModalCSV()">⬇️ CSV</button>
                     <label style="display:flex; align-items:center; font-size:12px; gap:5px; color:#aaa; cursor:pointer;">
                         <input type="checkbox" id="chk-show-raw" onchange="renderModalContent()"> Show Raw Data
@@ -293,8 +288,38 @@
         </div>
     </div>
 
+    <div id="history-modal" class="modal-overlay" style="display:none;">
+        <div id="history-modal-content" style="display:flex; align-items:center; justify-content:center; width:100%; height:100%;">
+            <div style="background:#1e1e1e; width:92%; max-width:900px; border-radius:12px; border:1px solid #333; box-shadow:0 20px 50px rgba(0,0,0,0.5); overflow:hidden;">
+                <div style="padding:20px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+                    <h2 style="margin:0; font-size:18px; color:#fff;">📊 History details</h2>
+                    <span class="modal-close" onclick="closeHistoryModal()" style="cursor:pointer;">×</span>
+                </div>
+                <div style="padding:12px 20px; border-bottom:1px solid #333; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <button class="control-btn" id="hist-btn-24h" onclick="setHistoryPeriod('24h')">24 hours</button>
+                    <button class="control-btn" id="hist-btn-7d" onclick="setHistoryPeriod('7d')">7 days</button>
+                    <button class="control-btn" id="hist-btn-30d" onclick="setHistoryPeriod('30d')">30 days</button>
+                    <button class="control-btn" onclick="exportReport('csv')" title="Export report as CSV">📥 CSV</button>
+                    <button class="control-btn" onclick="exportReport('json')" title="Export report as JSON">📥 JSON</button>
+                </div>
+                <div id="history-detail-body" style="padding:20px; max-height:65vh; overflow-y:auto;">
+                    <div style="color:#888;">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="sidebar-left" class="sidebar">
         <div class="fixed-zone">
+            <div class="card card-history" id="card-history">
+                <div class="card-header" onclick="openHistoryModal()" style="cursor:pointer;" title="Click for details"><h2>📊 Monitoring history</h2></div>
+                <div id="history-content">
+                    <div class="history-row clickable" data-period="24h" onclick="openHistoryModal('24h')"><span class="history-period">24 hours</span><span class="history-ok" id="h-24h">—</span></div>
+                    <div class="history-row clickable" data-period="7d" onclick="openHistoryModal('7d')"><span class="history-period">7 days</span><span class="history-ok" id="h-7d">—</span></div>
+                    <div class="history-row clickable" data-period="30d" onclick="openHistoryModal('30d')"><span class="history-period">30 days</span><span class="history-ok" id="h-30d">—</span></div>
+                    <div class="history-ack" id="history-ack-note"></div>
+                </div>
+            </div>
             <div class="card card-firewall" id="card-firewall">
                 <div class="card-header" onclick="openModal('firewall')"><h2>Firewall</h2></div>
                 <div style="text-align: center; padding-bottom: 15px; border-bottom: 1px solid #333; margin-bottom: 10px;">
@@ -328,24 +353,41 @@
 
     <div id="main-content">
         <div class="page-header">
-            <div style="display:flex; align-items:center;">
+            <div style="display:flex; align-items:center; gap:12px;">
                 <div id="conn-badge" class="badge badge-local" onclick="toggleViewMode()">LOCAL</div>
                 <span>Kingsbury IT Monitoring</span>
             </div>
-            <div class="weather-box">
+            <div id="weather-box" class="weather-box" onclick="openClockThemeModal()" title="Click to change time/date style">
                 <div class="weather-main">
-                    <span id="clock">--:--</span><span id="weather-icon" style="margin-left: 10px;">⛅</span><span id="weather-temp">--°C</span>
+                    <span id="clock" class="clock-display">--:--</span>
+                    <span id="weather-icon" style="font-size:24px;">⛅</span>
+                    <span id="weather-temp" class="weather-temp">--°C</span>
                 </div>
-                <div class="weather-sub" id="date-display">Thinking...</div>
+                <div class="date-display" id="date-display">Thinking...</div>
+            </div>
+        </div>
+        <div id="clock-theme-modal" class="modal-overlay" style="display:none;">
+            <div style="background:#1e1e1e; padding:24px; border-radius:12px; border:1px solid #444; min-width:280px;">
+                <h3 style="margin:0 0 16px 0; color:#fff;">Time &amp; date style</h3>
+                <p style="font-size:12px; color:#888; margin:0 0 12px 0;">Also changes the map background. Your choice is remembered.</p>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <button class="control-btn" onclick="setClockTheme('default')">Default</button>
+                    <button class="control-btn" onclick="setClockTheme('retro')">Retro / Matrix (with falling code)</button>
+                    <button class="control-btn" onclick="setClockTheme('analogue')">Analogue (elegant)</button>
+                    <button class="control-btn" onclick="setClockTheme('cartoon')">Cartoon</button>
+                </div>
+                <button class="control-btn" style="margin-top:16px; width:100%;" onclick="closeClockThemeModal()">Done</button>
             </div>
         </div>
         <div id="map-wrapper">
+            <div id="map-bg"></div>
             <div id="map-title">Loading...</div>
             <div id="map-controls">
                 <button class="control-btn" id="pause-btn" onclick="togglePause()">⏸️ Pause</button>
                 <button class="control-btn" onclick="nextMap()">⏭️ Next</button>
             </div>
             <div id="map"></div>
+            <div id="map-matrix-rain" aria-hidden="true"><canvas id="matrix-rain-canvas"></canvas></div>
         </div>
     </div>
 
@@ -400,11 +442,150 @@
         
         function updateTime() { 
             const n = new Date(); 
-            document.getElementById('clock').innerText = n.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); 
-            document.getElementById('date-display').innerText = n.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'short'}); 
+            const clockEl = document.getElementById('clock');
+            const dateEl = document.getElementById('date-display');
+            if (clockEl) clockEl.innerText = n.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+            if (dateEl) dateEl.innerText = n.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'short',year:'numeric'});
         }
         setInterval(updateTime,1000); updateTime();
         updateBadge();
+
+        let clockTheme = localStorage.getItem('clockTheme') || 'default';
+        function applyClockTheme() {
+            const box = document.getElementById('weather-box');
+            if (box) {
+                box.classList.remove('theme-retro','theme-matrix','theme-analogue','theme-cartoon');
+                if (clockTheme && clockTheme !== 'default') box.classList.add('theme-' + clockTheme);
+            }
+            const wrapper = document.getElementById('map-wrapper');
+            if (wrapper) {
+                const mapTheme = (clockTheme === 'matrix') ? 'retro' : (clockTheme || 'default');
+                wrapper.classList.remove('map-theme-default','map-theme-retro','map-theme-analogue','map-theme-cartoon');
+                wrapper.classList.add('map-theme-' + mapTheme);
+                if (mapTheme === 'retro') startMatrixRain(); else stopMatrixRain();
+            }
+        }
+        (function initMatrixRain() {
+            var matrixRainRaf = null, matrixRainTimeout = null;
+            var matrixCtx = null, matrixDrops = [], matrixFontSize = 10, matrixDropSpeed = 0.35, matrixLetters = 'ABCDEFGHIJKLMNOPQRSTUVXYZ0123456789@#$%&*'.split('');
+            function resizeMatrixCanvas() {
+                var container = document.getElementById('map-matrix-rain');
+                var canvas = document.getElementById('matrix-rain-canvas');
+                if (!container || !canvas || !matrixCtx) return;
+                var w = container.clientWidth, h = container.clientHeight;
+                if (canvas.width !== w || canvas.height !== h) {
+                    canvas.width = w;
+                    canvas.height = h;
+                    var cols = Math.floor(w / matrixFontSize);
+                    matrixDrops.length = 0;
+                    for (var i = 0; i < cols; i++) matrixDrops[i] = 1;
+                }
+            }
+            function drawMatrix() {
+                var canvas = document.getElementById('matrix-rain-canvas');
+                if (!canvas || !matrixCtx) return;
+                var container = document.getElementById('map-matrix-rain');
+                if (!container || container.offsetParent === null) return;
+                if (document.hidden) {
+                    if (matrixRainRaf) cancelAnimationFrame(matrixRainRaf);
+                    matrixRainRaf = null;
+                    matrixRainTimeout = setTimeout(drawMatrix, 250);
+                    return;
+                }
+                if (matrixRainTimeout) clearTimeout(matrixRainTimeout);
+                matrixRainTimeout = null;
+                resizeMatrixCanvas();
+                if (canvas.width === 0 || canvas.height === 0 || matrixDrops.length === 0) {
+                    matrixRainRaf = requestAnimationFrame(drawMatrix);
+                    return;
+                }
+                matrixCtx.fillStyle = 'rgba(10, 18, 10, 0.12)';
+                matrixCtx.fillRect(0, 0, canvas.width, canvas.height);
+                matrixCtx.fillStyle = '#0f0';
+                matrixCtx.font = matrixFontSize + 'px monospace';
+                for (var i = 0; i < matrixDrops.length; i++) {
+                    var ch = matrixLetters[Math.floor(Math.random() * matrixLetters.length)];
+                    matrixCtx.fillText(ch, i * matrixFontSize, matrixDrops[i] * matrixFontSize);
+                    matrixDrops[i] += matrixDropSpeed;
+                    if (matrixDrops[i] * matrixFontSize > canvas.height && Math.random() > 0.95) matrixDrops[i] = 0;
+                }
+                matrixRainRaf = requestAnimationFrame(drawMatrix);
+            }
+            window.startMatrixRain = function() {
+                stopMatrixRain();
+                var canvas = document.getElementById('matrix-rain-canvas');
+                var container = document.getElementById('map-matrix-rain');
+                if (!canvas || !container) return;
+                matrixCtx = canvas.getContext('2d');
+                resizeMatrixCanvas();
+                matrixRainRaf = requestAnimationFrame(drawMatrix);
+            };
+            window.stopMatrixRain = function() {
+                if (matrixRainRaf) { cancelAnimationFrame(matrixRainRaf); matrixRainRaf = null; }
+                if (matrixRainTimeout) { clearTimeout(matrixRainTimeout); matrixRainTimeout = null; }
+                matrixCtx = null;
+            };
+            var ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(function() { if (matrixCtx) resizeMatrixCanvas(); }) : null;
+            document.addEventListener('DOMContentLoaded', function() {
+                var el = document.getElementById('map-matrix-rain');
+                if (el && ro) ro.observe(el);
+            });
+            if (document.readyState !== 'loading' && ro) {
+                var el = document.getElementById('map-matrix-rain');
+                if (el) ro.observe(el);
+            }
+        })();
+        function openClockThemeModal() {
+            document.getElementById('clock-theme-modal').style.display = 'flex';
+            document.getElementById('clock-theme-modal').classList.add('active');
+        }
+        function closeClockThemeModal() {
+            document.getElementById('clock-theme-modal').classList.remove('active');
+            document.getElementById('clock-theme-modal').style.display = 'none';
+        }
+        function setClockTheme(theme) {
+            clockTheme = theme;
+            localStorage.setItem('clockTheme', theme);
+            applyClockTheme();
+            closeClockThemeModal();
+        }
+        applyClockTheme();
+        document.getElementById('clock-theme-modal') && document.getElementById('clock-theme-modal').addEventListener('click', function(e) { if (e.target.id === 'clock-theme-modal') closeClockThemeModal(); });
+
+        function formatNoteForDisplay(note) {
+            if (!note || typeof note !== 'string') return note;
+            const t = note.trim();
+            if (/^HTTP\s*OK$/i.test(t)) return 'Website online (HTTP 200)';
+            if (/^Ping\s*Only$/i.test(t)) return 'Reachable (ping only — no HTTP check)';
+            if (/^Website\s*online\s*\(HTTP\s*\d+\)$/i.test(t)) return t;
+            if (/Reachable\s*\(ping\s*only/i.test(t)) return t;
+            return note;
+        }
+
+        async function exportReport(format) {
+            const base = isCloudMode ? CLOUD_URL : '';
+            try {
+                const r = await fetch(base + '/api/report?format=' + (format || 'json'));
+                if (!r.ok) throw new Error('Export failed');
+                const filename = 'monitor-report-' + Date.now() + (format === 'csv' ? '.csv' : '.json');
+                if (format === 'csv') {
+                    const blob = await r.blob();
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = filename;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                } else {
+                    const data = await r.json();
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = filename;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                }
+            } catch (e) { console.error(e); }
+        }
 
         async function fetchWeather() { 
             try{ 
@@ -425,10 +606,56 @@
             }catch(e){ return {}; } 
         }
 
+        function formatSeenFor(upSince) {
+            if (!upSince) return '';
+            const then = new Date(upSince).getTime();
+            if (isNaN(then)) return '';
+            const sec = Math.floor((Date.now() - then) / 1000);
+            if (sec < 0) return '';
+            if (sec >= 86400) return 'Seen for ' + Math.floor(sec / 86400) + 'd';
+            if (sec >= 3600) return 'Seen for ' + Math.floor(sec / 3600) + 'h';
+            if (sec >= 60) return 'Seen for ' + Math.floor(sec / 60) + 'm';
+            return 'Seen for <1m';
+        }
+
+        function getCameraDisplayDetails(obj) {
+            if (!obj) return {};
+            const o = {};
+            if (obj.sysName && String(obj.sysName).trim() !== 'Device' && String(obj.sysName).trim().toLowerCase() !== 'unknown') o.sysName = obj.sysName;
+            if (obj.uptime && String(obj.uptime).trim() !== '?') o.uptime = obj.uptime;
+            if (obj.model) o.model = obj.model;
+            if (obj.Model) o.Model = obj.Model;
+            if (obj.serial) o.serial = obj.serial;
+            if (obj.mac) o.mac = obj.mac;
+            if (obj.note && String(obj.note).trim()) {
+                const n = String(obj.note)
+                    .replace(/\|\s*Uptime:\s*[^|]+/gi, '')
+                    .replace(/\|\s*Seen for [^|]+/gi, '')
+                    .replace(/\|\s*$/g, '').trim();
+                if (n) o.note = n;
+            }
+            if (obj.Total_Recv && String(obj.Total_Recv) !== '0.00 GB') o.Total_Recv = obj.Total_Recv;
+            if (obj.Total_Sent && String(obj.Total_Sent) !== '0.00 GB') o.Total_Sent = obj.Total_Sent;
+            if (obj.cpu != null && obj.cpu > 0) o.cpu = obj.cpu;
+            if (obj.ram != null && obj.ram > 0) o.ram = obj.ram;
+            if (obj.disk != null && obj.disk > 0) o.disk = obj.disk;
+            if (obj.HikvisionDiskSize && String(obj.HikvisionDiskSize).trim()) o.HikvisionDiskSize = obj.HikvisionDiskSize;
+            if (obj.HikvisionMemSize && String(obj.HikvisionMemSize).trim()) o.HikvisionMemSize = obj.HikvisionMemSize;
+            if (obj.HikvisionSysTime && String(obj.HikvisionSysTime).trim()) o.HikvisionSysTime = obj.HikvisionSysTime;
+            return o;
+        }
+
         // === CARD VISIBILITY ===
         let globalCardConfig={}; 
+        let displayLabelsConfig = {};
         async function loadGlobalConfig(){ 
             try{ const r=await fetch('/api/card-config'); if(r.ok){ globalCardConfig=await r.json(); applyGlobalVisibility(); } }catch(e){} 
+            try{ const r=await fetch('/api/display-labels-config'); if(r.ok) displayLabelsConfig=await r.json(); }catch(e){}
+        }
+        function shouldShowLabel(deviceType, labelKey) {
+            const arr = displayLabelsConfig[deviceType];
+            if (!arr || !Array.isArray(arr) || arr.length === 0) return true;
+            return arr.includes(labelKey);
         }
         function applyGlobalVisibility() { 
             const m={'card-cloud':'cloud','card-server':'server','card-nvr':'nvr','card-esxi':'esxi','card-printer':'printer','card-cctv':'cctv','card-switch':'switch','card-wap':'wap','card-telephone':'telephone','card-access':'access','card-hardware':'hardware','card-firewall':'firewall'}; 
@@ -446,8 +673,16 @@
 
         function getUiType(d) { 
             if(!d) return 'unknown'; 
-            const t=String(d).toLowerCase().trim(); 
-            if(t.includes('switch')) return 'switch'; 
+            let t = "";
+            let name = "";
+            
+            // Handle object or string input
+            if(typeof d === 'string') { t = d.toLowerCase().trim(); }
+            else { t = (d.type || "").toLowerCase().trim(); name = (d.name || "").toLowerCase().trim(); }
+
+            // FIX: Robust check for switches. Even if type is 'hardware', if name says 'switch', categorize as switch.
+            if(t === 'switch' || t === 'network' || name.includes('switch')) return 'switch'; 
+            
             if(t==='san'||t==='nas'||t.includes('storage')) return 'hardware'; 
             if(t==='access'||t.includes('access')) return 'access_control'; 
             if(t==='service'||t==='cloud') return 'service'; 
@@ -522,7 +757,10 @@
 
         // === MAPS ===
         let maps=[{id:'T-G.PNG',name:'T Site - Ground',active:true}]; 
-        var map=L.map('map',{crs:L.CRS.Simple,minZoom:-2,zoomControl:false,attributionControl:false}); 
+        var map=L.map('map',{crs:L.CRS.Simple,minZoom:-2,zoomControl:false,attributionControl:false});
+        function ensureMapBgVisible(){ var m=document.getElementById('map'); if(m){ m.style.setProperty('background','transparent','important'); } var c=document.querySelector('#map-wrapper .leaflet-container'); if(c){ c.style.setProperty('background','transparent','important'); } }
+        ensureMapBgVisible();
+        map.whenReady(ensureMapBgVisible);
         var devicesLayer=L.layerGroup().addTo(map); 
         var currentMapLayer; 
         let currentMapIndex=0, isPaused=false;
@@ -532,12 +770,8 @@
                 const r=await fetch('/api/map-config');
                 if(r.ok) {
                     const allMaps = await r.json();
-                    // Filter to only active maps
                     maps = allMaps.filter(m => m.active !== false);
-                    if(maps.length === 0) {
-                        // Fallback if no maps are active
-                        maps = [{id:'T-G.PNG', name:'T Site - Ground', active:true}];
-                    }
+                    if(maps.length === 0) maps = [{id:'T-G.PNG', name:'T Site - Ground', active:true}];
                 }
             }catch(e){
                 console.error('Failed to load map config:', e);
@@ -554,138 +788,440 @@
                 if(currentMapLayer) map.removeLayer(currentMapLayer); 
                 currentMapLayer=L.imageOverlay(c.id,b).addTo(map); 
                 map.fitBounds(b); 
-                // Re-plot devices when map changes
+                ensureMapBgVisible();
                 plotDevicesOnMap();
             } 
         }
 
-        // === DEVICE MARKERS ON MAP ===
-        let currentMapBounds = null;
-        
-        // Device type emoji mapping
+        // === DEVICE MARKERS ===
         const deviceEmojis = {
-            'server': '🖥️',
-            'esxi': '🗄️',
-            'nvr': '📹',
-            'firewall': '🛡️',
-            'switch': '🔀',
-            'wap': '📡',
-            'printer': '🖨️',
-            'cctv': '📷',
-            'telephone': '☏',
-            'access_control': '🚪',
-            'hardware': '💾',
-            'service': '☁️',
-            'cloud': '☁️',
-            'default': '📍'
+            'server': '🖥️', 'esxi': '🗄️', 'nvr': '📹', 'firewall': '🛡️', 'switch': '🔀',
+            'wap': '📡', 'printer': '🖨️', 'cctv': '📷', 'telephone': '☏', 'access_control': '🚪',
+            'hardware': '💾', 'service': '☁️', 'cloud': '☁️', 'default': '📍'
         };
         
         function getDeviceEmoji(type) {
-            const t = getUiType(type);
+            const t = getUiType({type: type});
             return deviceEmojis[t] || deviceEmojis['default'];
         }
-        
+
+        // Convex hull (Graham scan) - points as [y, x] for Leaflet; returns ordered hull [y,x]...
+        function convexHull(points) {
+            if (points.length < 3) return points.slice();
+            const pts = points.map(p => [parseFloat(p[0]), parseFloat(p[1])]);
+            let minIdx = 0;
+            for (let i = 1; i < pts.length; i++) {
+                if (pts[i][0] < pts[minIdx][0] || (pts[i][0] === pts[minIdx][0] && pts[i][1] < pts[minIdx][1])) minIdx = i;
+            }
+            const start = pts[minIdx];
+            const rest = pts.filter((_, i) => i !== minIdx).map(p => ({
+                p,
+                angle: Math.atan2(p[1] - start[1], p[0] - start[0]),
+                dist: (p[0] - start[0]) ** 2 + (p[1] - start[1]) ** 2
+            }));
+            rest.sort((a, b) => a.angle !== b.angle ? a.angle - b.angle : a.dist - b.dist);
+            const hull = [start, rest[0].p];
+            for (let i = 1; i < rest.length; i++) {
+                const next = rest[i].p;
+                while (hull.length >= 2) {
+                    const a = hull[hull.length - 2], b = hull[hull.length - 1];
+                    const cross = (b[0] - a[0]) * (next[1] - b[1]) - (b[1] - a[1]) * (next[0] - b[0]);
+                    if (cross <= 0) hull.pop();
+                    else break;
+                }
+                hull.push(next);
+            }
+            return hull;
+        }
+
+        // Cluster problem devices by proximity (same area). Returns array of device arrays.
+        const FAULT_CLUSTER_RADIUS = 120;
+        const FAULT_MIN_DEVICES = 3;
+        function clusterProblemDevices(problemDevices) {
+            const withPos = problemDevices.map(d => {
+                let x, y;
+                if (d.map_coordinates && typeof d.map_coordinates === 'object') { x = parseFloat(d.map_coordinates.x); y = parseFloat(d.map_coordinates.y); }
+                else { x = parseFloat(d.x); y = parseFloat(d.y); }
+                return { d, x, y, key: `${y},${x}` };
+            });
+            const parent = {};
+            withPos.forEach((_, i) => parent[i] = i);
+            function find(i) { return parent[i] === i ? i : (parent[i] = find(parent[i])); }
+            function union(i, j) { parent[find(i)] = find(j); }
+            const R2 = FAULT_CLUSTER_RADIUS * FAULT_CLUSTER_RADIUS;
+            for (let i = 0; i < withPos.length; i++) {
+                for (let j = i + 1; j < withPos.length; j++) {
+                    const dy = withPos[i].y - withPos[j].y, dx = withPos[i].x - withPos[j].x;
+                    if (dy * dy + dx * dx <= R2) union(i, j);
+                }
+            }
+            const groups = {};
+            withPos.forEach((w, i) => {
+                const r = find(i);
+                if (!groups[r]) groups[r] = [];
+                groups[r].push(w);
+            });
+            return Object.values(groups).filter(g => g.length >= FAULT_MIN_DEVICES);
+        }
+
+        function formatLastIssue(d) {
+            const t = d.last_issue || d.last_seen || d.updatedAt;
+            if (!t) return '—';
+            const dt = new Date(t);
+            const now = Date.now();
+            const diff = (now - dt) / 60000;
+            if (diff < 60) return dt.toLocaleTimeString() + ' (' + Math.round(diff) + 'm ago)';
+            if (diff < 1440) return dt.toLocaleTimeString() + ' (' + Math.round(diff / 60) + 'h ago)';
+            return dt.toLocaleString();
+        }
+
         function plotDevicesOnMap() {
             devicesLayer.clearLayers();
-            
             const currentMap = maps[currentMapIndex];
             if (!currentMap || !cachedDevices.length) return;
             
-            // Filter devices that belong to this map
             const mapDevices = cachedDevices.filter(d => {
-                // Check if device has floor_id assignment and coordinates
-                // floor_id should match the map id (e.g., "T-G.PNG")
                 if (!d.floor_id || d.floor_id === 'nomap') return false;
+                const deviceType = getUiType(d);
+                if (hiddenTypes.has(deviceType)) return false;
+                const cardConfigKey = deviceType === 'service' ? 'cloud' : deviceType;
+                if (globalCardConfig[cardConfigKey] === false) return false;
                 
-                // Get coordinates - could be in map_coordinates object or direct x/y
                 let x, y;
-                if (d.map_coordinates && typeof d.map_coordinates === 'object') {
-                    x = d.map_coordinates.x;
-                    y = d.map_coordinates.y;
-                } else if (d.x !== undefined && d.y !== undefined) {
-                    x = d.x;
-                    y = d.y;
-                }
+                if (d.map_coordinates && typeof d.map_coordinates === 'object') { x = d.map_coordinates.x; y = d.map_coordinates.y; } 
+                else if (d.x !== undefined && d.y !== undefined) { x = d.x; y = d.y; }
                 
-                // Skip if no valid coordinates or coordinates are 0,0
-                if (x === undefined || y === undefined) return false;
-                if (x === 0 && y === 0) return false;
-                
-                // Match floor_id to current map id (case-insensitive)
+                if (x === undefined || y === undefined || (x === 0 && y === 0)) return false;
                 const deviceFloor = String(d.floor_id).toLowerCase();
                 const currentMapId = String(currentMap.id).toLowerCase();
                 return deviceFloor === currentMapId;
             });
 
+            const ackIps = new Set(acknowledgedIssues.map(a => (a.ip || a.deviceIp || '').trim()).filter(Boolean));
+            const problemDevices = mapDevices.filter(d => (d.status === 'offline' || d.status === 'amber') && !ackIps.has((d.ip || '').trim()));
+
+            // 1. Draw fault zones (3+ devices in same area) first so they sit behind markers
+            const clusters = clusterProblemDevices(problemDevices);
+            const PAD = 25;
+            clusters.forEach(cluster => {
+                const points = cluster.map(w => [w.y, w.x]);
+                const hull = convexHull(points);
+                if (hull.length < 2) return;
+                const centroidY = hull.reduce((s, p) => s + p[0], 0) / hull.length;
+                const centroidX = hull.reduce((s, p) => s + p[1], 0) / hull.length;
+                const padded = hull.map(([py, px]) => {
+                    const dy = py - centroidY, dx = px - centroidX;
+                    const scale = 1 + PAD / (Math.hypot(dy, dx) || 1);
+                    return [centroidY + dy * scale, centroidX + dx * scale];
+                });
+                const latLngs = padded.map(([py, px]) => [py, px]);
+                const poly = L.polygon(latLngs, {
+                    color: '#f8312f',
+                    fillColor: '#f8312f',
+                    fillOpacity: 0.18,
+                    weight: 2,
+                    dashArray: '6,4'
+                });
+                const latestIssue = cluster.reduce((best, w) => {
+                    const t = w.d.last_issue || w.d.last_seen || w.d.updatedAt;
+                    return (!best || (t && new Date(t) > new Date(best))) ? t : best;
+                }, null);
+                const label = `${cluster.length} devices down • Last: ${formatLastIssue({ last_issue: latestIssue, last_seen: latestIssue, updatedAt: latestIssue })}`;
+                poly.bindTooltip(label, { permanent: true, direction: 'center', className: 'fault-zone-label', offset: [0, 0] });
+                poly.addTo(devicesLayer);
+            });
+
+            // 2. Individual problem circles and markers
             mapDevices.forEach(d => {
-                // Get coordinates
                 let x, y;
-                if (d.map_coordinates && typeof d.map_coordinates === 'object') {
-                    x = parseFloat(d.map_coordinates.x);
-                    y = parseFloat(d.map_coordinates.y);
-                } else {
-                    x = parseFloat(d.x);
-                    y = parseFloat(d.y);
-                }
+                if (d.map_coordinates && typeof d.map_coordinates === 'object') { x = parseFloat(d.map_coordinates.x); y = parseFloat(d.map_coordinates.y); } 
+                else { x = parseFloat(d.x); y = parseFloat(d.y); }
                 
-                // Determine status color
-                let statusColor = '#00d26a'; // online green
-                let statusClass = 'marker-online';
-                if (d.status === 'offline') {
-                    statusColor = '#f8312f';
-                    statusClass = 'marker-offline';
-                } else if (d.status === 'amber') {
-                    statusColor = '#ffc107';
-                    statusClass = 'marker-amber';
-                }
+                let statusColor = '#00d26a'; let statusClass = 'marker-online';
+                if (d.status === 'offline') { statusColor = '#f8312f'; statusClass = 'marker-offline'; } 
+                else if (d.status === 'amber') { statusColor = '#ffc107'; statusClass = 'marker-amber'; }
+                else if (d.status === 'online' && deviceHasDriveWarning(d)) { statusColor = '#ffc107'; statusClass = 'marker-amber'; }
                 
-                // Get device type for emoji
-                const t = getUiType(d.type);
+                const isProblem = d.status === 'offline' || d.status === 'amber' || (d.status === 'online' && deviceHasDriveWarning(d));
+                const isAcknowledged = isProblem && ackIps.has((d.ip || '').trim());
+                if (isAcknowledged) statusClass = statusClass + ' marker-acknowledged';
+
+                const t = getUiType(d);
                 const emoji = getDeviceEmoji(d.type);
-                
-                // Size based on type
                 let size = 24;
                 if (['server', 'nvr', 'esxi', 'firewall'].includes(t)) size = 28;
                 if (['cctv'].includes(t)) size = 20;
                 
-                // Create custom div icon with emoji
+                if (isProblem && !isAcknowledged) {
+                    const circle = L.circleMarker([y, x], { radius: 22, color: '#f8312f', fillColor: '#f8312f', fillOpacity: 0.2, weight: 2, dashArray: '4,4' });
+                    circle.addTo(devicesLayer);
+                }
+
                 const icon = L.divIcon({
                     className: 'device-marker-wrapper',
-                    html: `<div class="device-marker-emoji ${statusClass}" style="
-                        font-size: ${size}px;
-                        text-shadow: 0 0 8px ${statusColor}, 0 0 12px ${statusColor};
-                        filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
-                        cursor: pointer;
-                        transition: transform 0.2s;
-                    ">${emoji}</div>`,
-                    iconSize: [size, size],
-                    iconAnchor: [size/2, size/2]
+                    html: `<div class="device-marker-emoji ${statusClass}" style="font-size: ${size}px; text-shadow: 0 0 8px ${statusColor}, 0 0 12px ${statusColor}; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); cursor: pointer; transition: transform 0.2s;">${emoji}</div>`,
+                    iconSize: [size, size], iconAnchor: [size/2, size/2]
                 });
                 
-                // For L.CRS.Simple with image overlay, coordinates are [y, x] (row, column)
                 const marker = L.marker([y, x], { icon: icon });
-                
-                // Build popup content
-                const det = safeParseDetails(d.details);
-                let popupContent = `
-                    <div style="min-width:150px;font-family:'Inter',sans-serif;">
-                        <div style="font-weight:600;font-size:14px;margin-bottom:5px;color:#333;">${emoji} ${d.name}</div>
-                        <div style="font-size:11px;color:#666;margin-bottom:3px;">${t.toUpperCase()}</div>
-                        <div style="font-size:12px;color:${d.status==='online'?'#00d26a':(d.status==='amber'?'#ffc107':'#f8312f')};font-weight:500;">${(d.status||'unknown').toUpperCase()}</div>
-                        ${d.ip ? `<div style="font-size:11px;color:#888;margin-top:3px;font-family:monospace;">${d.ip}</div>` : ''}
-                        ${det.note ? `<div style="font-size:10px;color:#999;margin-top:5px;">${det.note}</div>` : ''}
-                    </div>
-                `;
-                
-                marker.bindPopup(popupContent);
+                marker.on('click', () => openDeviceModal(d.ip));
                 marker.addTo(devicesLayer);
             });
         }
         function togglePause(){ isPaused=!isPaused; document.getElementById('pause-btn').innerText=isPaused?"▶️ Play":"⏸️ Pause"; if(!isPaused)updateDashboard(); }
         setInterval(()=>{if(!isPaused)nextMap();},15000);
 
-        // === MODAL ===
+        // === HISTORY & ACKNOWLEDGED ISSUES ===
+        let acknowledgedIssues = [];
+        async function loadAcknowledgedIssues() {
+            try {
+                const base = isCloudMode ? CLOUD_URL : '';
+                const r = await fetch(base + '/api/acknowledged-issues?active=1');
+                if (r.ok) acknowledgedIssues = await r.json();
+                if (!Array.isArray(acknowledgedIssues)) acknowledgedIssues = [];
+            } catch (e) { acknowledgedIssues = []; }
+        }
+        async function loadMonitorSettings() {
+            try {
+                const base = isCloudMode ? CLOUD_URL : '';
+                const r = await fetch(base + '/api/monitor-settings');
+                if (r.ok) cachedMonitorSettings = await r.json();
+                if (!cachedMonitorSettings.deviceConnectionTemplate) cachedMonitorSettings.deviceConnectionTemplate = 'http://{{ip}}';
+            } catch (e) { cachedMonitorSettings = { deviceConnectionTemplate: 'http://{{ip}}' }; }
+        }
+        async function loadDeviceNotes() {
+            try {
+                const base = isCloudMode ? CLOUD_URL : '';
+                const r = await fetch(base + '/api/device-notes');
+                if (r.ok) cachedDeviceNotes = await r.json();
+                if (typeof cachedDeviceNotes !== 'object') cachedDeviceNotes = {};
+            } catch (e) { cachedDeviceNotes = {}; }
+        }
+        async function loadDeviceLoginUrls() {
+            try {
+                const base = isCloudMode ? CLOUD_URL : '';
+                const r = await fetch(base + '/api/device-login-urls');
+                if (r.ok) cachedDeviceLoginUrls = await r.json();
+                if (typeof cachedDeviceLoginUrls !== 'object') cachedDeviceLoginUrls = {};
+            } catch (e) { cachedDeviceLoginUrls = {}; }
+        }
+        async function loadHistoryPanel() {
+            const base = isCloudMode ? CLOUD_URL : '';
+            const periods = [{ key: '24h', id: 'h-24h' }, { key: '7d', id: 'h-7d' }, { key: '30d', id: 'h-30d' }];
+            const noteEl = document.getElementById('history-ack-note');
+            let maxAck = 0;
+            const results = await Promise.all(periods.map(p => fetch(`${base}/api/history/summary?period=${p.key}`).then(r => r.ok ? r.json() : null).catch(() => null)));
+            const unacks = results.map((data, i) => ({ unack: (data && (data.unacknowledgedProblemCount || 0)), ack: (data && (data.acknowledgedProblemCount || 0)) }));
+            unacks.forEach((u, i) => { if (u.ack > maxAck) maxAck = u.ack; });
+            results.forEach((data, i) => {
+                const el = document.getElementById(periods[i].id);
+                if (!el) return;
+                if (!data) { el.textContent = '—'; el.className = 'history-period'; return; }
+                const unack = data.unacknowledgedProblemCount || 0;
+                if (unack === 0) {
+                    el.textContent = '✓ No problematic fails';
+                    el.className = 'history-ok';
+                } else {
+                    el.textContent = `${unack} unacknowledged issue(s)`;
+                    el.className = 'history-fails';
+                }
+            });
+            // Show only the most relevant period(s): 30d always; 7d only if 30d has issues; 24h only if 24h has issues
+            const u24 = unacks[0].unack, u7 = unacks[1].unack, u30 = unacks[2].unack;
+            const row24 = document.getElementById('h-24h') && document.getElementById('h-24h').closest('.history-row');
+            const row7 = document.getElementById('h-7d') && document.getElementById('h-7d').closest('.history-row');
+            const row30 = document.getElementById('h-30d') && document.getElementById('h-30d').closest('.history-row');
+            if (row24) row24.style.display = u24 > 0 ? '' : 'none';
+            if (row7) row7.style.display = (u7 > 0 || u30 > 0) ? '' : 'none';
+            if (row30) row30.style.display = '';
+            if (noteEl) noteEl.textContent = maxAck > 0 ? `${maxAck} known/acknowledged issue(s) excluded from count` : '';
+        }
+
+        let historyModalPeriod = '24h';
+        function openHistoryModal(period) {
+            historyModalPeriod = period || historyModalPeriod;
+            document.getElementById('history-modal').style.display = 'flex';
+            document.getElementById('history-modal').classList.add('active');
+            document.querySelectorAll('#history-modal .control-btn').forEach(b => { b.classList.remove('expanded-active'); });
+            const btn = document.getElementById('hist-btn-' + historyModalPeriod);
+            if (btn) btn.classList.add('expanded-active');
+            renderHistoryDetail();
+        }
+        function closeHistoryModal() {
+            document.getElementById('history-modal').classList.remove('active');
+            document.getElementById('history-modal').style.display = 'none';
+        }
+        function setHistoryPeriod(period) {
+            historyModalPeriod = period;
+            document.querySelectorAll('#history-modal .control-btn').forEach(b => { b.classList.remove('expanded-active'); });
+            const btn = document.getElementById('hist-btn-' + period);
+            if (btn) btn.classList.add('expanded-active');
+            renderHistoryDetail();
+        }
+        document.getElementById('history-modal')?.addEventListener('click', e => { if (e.target.id === 'history-modal') closeHistoryModal(); });
+
+        let historyUnackEnriched = [];
+        let historyFilterType = '';
+        let historyFilterOfflineMin = 0;
+        let historyFilterSite = '';
+        let lastHistoryData = null;
+
+        function applyHistoryFilters() {
+            return historyUnackEnriched.filter(d => {
+                if (historyFilterType && (d.type || '').toLowerCase() !== historyFilterType.toLowerCase()) return false;
+                if (historyFilterOfflineMin > 0 && (d.offline || 0) < historyFilterOfflineMin) return false;
+                if (historyFilterSite === 'T') {
+                    const fid = (d.floor_id || '').toUpperCase();
+                    if (!fid.startsWith('T-')) return false;
+                } else if (historyFilterSite === 'K') {
+                    const fid = (d.floor_id || '').toUpperCase();
+                    if (!fid.startsWith('K-')) return false;
+                }
+                return true;
+            });
+        }
+
+        function buildHistoryBodyHtml(data) {
+            const filtered = applyHistoryFilters();
+            const typesInList = [...new Set(historyUnackEnriched.map(d => (d.type || '').toLowerCase()).filter(Boolean))].sort();
+            let html = '';
+            html += `<div style="margin-bottom:16px; font-size:13px; color:#aaa;">Since ${new Date(data.since).toLocaleString()}</div>`;
+            html += `<div style="margin-bottom:12px;"><span style="color:#888;">Total checks:</span> <strong>${data.totalChecks || 0}</strong></div>`;
+            if (historyUnackEnriched.length > 0) {
+                html += `<div class="dd-section" style="margin-top:16px;">Unacknowledged problems</div>`;
+                if (!isCloudMode) {
+                    html += `<div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; margin-bottom:12px;">`;
+                    html += `<label style="color:#888; font-size:12px;">Device type:</label><select id="history-filter-type" onchange="setHistoryFilterType(this.value); renderHistoryDetailBody();" style="background:#333; color:#fff; border:1px solid #444; padding:6px 10px; border-radius:6px; font-size:12px;"><option value="">All</option>${typesInList.map(t => `<option value="${t}" ${historyFilterType === t ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+                    html += `<label style="color:#888; font-size:12px;">Offline count:</label><select id="history-filter-offline" onchange="setHistoryFilterOffline(parseInt(this.value,10)); renderHistoryDetailBody();" style="background:#333; color:#fff; border:1px solid #444; padding:6px 10px; border-radius:6px; font-size:12px;"><option value="0">Any</option><option value="1" ${historyFilterOfflineMin===1?'selected':''}>1+</option><option value="5" ${historyFilterOfflineMin===5?'selected':''}>5+</option><option value="10" ${historyFilterOfflineMin===10?'selected':''}>10+</option><option value="20" ${historyFilterOfflineMin===20?'selected':''}>20+</option></select>`;
+                    html += `<label style="color:#888; font-size:12px;">Site:</label><select id="history-filter-site" onchange="setHistoryFilterSite(this.value); renderHistoryDetailBody();" style="background:#333; color:#fff; border:1px solid #444; padding:6px 10px; border-radius:6px; font-size:12px;"><option value="">All</option><option value="T" ${historyFilterSite==='T'?'selected':''}>T site</option><option value="K" ${historyFilterSite==='K'?'selected':''}>K site</option></select>`;
+                    html += `<button class="control-btn" onclick="historySelectAll()">Select all</button><button class="control-btn" onclick="historySelectNone()">Select none</button>`;
+                    html += `<span id="history-ack-selected-wrap" style="display:none;"><button class="control-btn" id="history-ack-selected-btn" onclick="acknowledgeSelectedFromHistory()">Acknowledge selected</button></span>`;
+                    html += `<span style="color:#888; font-size:12px;">Showing ${filtered.length} of ${historyUnackEnriched.length}</span>`;
+                    html += `</div>`;
+                    html += `<div id="history-ack-duration-bar" style="display:none; margin-bottom:12px; padding:10px; background:#252525; border-radius:8px; border:1px solid #333;"><span style="color:#aaa; font-size:12px;">Acknowledge for:</span> <button class="control-btn" style="margin-left:6px;" onclick="confirmHistoryAck('until_next_issue')" title="Clear from history while device is online; will show again if it goes offline">Clear until next problem</button><button class="control-btn" style="margin-left:4px;" onclick="confirmHistoryAck('1h')">1 hour</button><button class="control-btn" style="margin-left:4px;" onclick="confirmHistoryAck('1d')">1 day</button><button class="control-btn" style="margin-left:4px;" onclick="confirmHistoryAck('until_online')">Until online</button><button class="control-btn" style="margin-left:4px;" onclick="confirmHistoryAck('forever')">Forever</button><button class="control-btn" style="margin-left:8px; color:#888;" onclick="cancelHistoryAck()">Cancel</button></div>`;
+                }
+                filtered.forEach(d => {
+                    const ipEsc = (d.ip || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const ipAttr = (d.ip || '').replace(/"/g, '&quot;');
+                    const typeLabel = (d.type || '—');
+                    const siteLabel = (d.floor_id || '').startsWith('T-') ? 'T' : (d.floor_id || '').startsWith('K-') ? 'K' : '—';
+                    if (isCloudMode) {
+                        html += `<div style="padding:10px; border:1px solid #333; border-radius:6px; margin-bottom:6px;"><div style="cursor:pointer;" onclick="closeHistoryModal(); openDeviceModal('${ipEsc}')"><span style="font-weight:600;">${d.name || d.ip}</span> <span style="color:#888; font-family:monospace;">${d.ip}</span> <span style="color:#f8312f;">offline: ${d.offline || 0} amber: ${d.amber || 0}</span></div><div style="font-size:11px; color:#666; margin-top:4px;">Edits disabled in cloud view.</div></div>`;
+                    } else {
+                        html += `<div class="history-unack-row" style="display:flex; align-items:center; gap:10px; padding:10px; border:1px solid #333; border-radius:6px; margin-bottom:6px;"><input type="checkbox" class="history-ack-check" data-ip="${ipAttr}" onchange="updateHistoryAckSelectedBtn()"><div style="cursor:pointer; flex:1; min-width:0;" onclick="closeHistoryModal(); openDeviceModal('${ipEsc}')"><span style="font-weight:600;">${(d.name || d.ip).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span> <span style="color:#888; font-family:monospace;">${d.ip}</span> <span style="color:#888; font-size:11px;">${typeLabel}</span> <span style="color:#666; font-size:11px;">${siteLabel}</span> <span style="color:#f8312f;">offline: ${d.offline || 0} amber: ${d.amber || 0}</span></div><button class="control-btn history-ack-one-btn" style="flex-shrink:0;" data-ip="${ipAttr}" onclick="event.stopPropagation(); showHistoryAckDurationForIps([this.getAttribute('data-ip')])">Acknowledge</button></div>`;
+                    }
+                });
+            } else {
+                html += `<div style="color:#00d26a; margin-top:12px;">✓ No unacknowledged problematic fails in this period.</div>`;
+            }
+            if (data.acknowledgedProblemCount > 0) {
+                html += `<div class="dd-section" style="margin-top:16px;">Acknowledged / known issues (${data.devicesWithAcknowledgedProblems?.length || 0})</div>`;
+                (data.devicesWithAcknowledgedProblems || []).forEach(d => {
+                    html += `<div style="padding:8px; border-bottom:1px solid #2a2a2a; font-size:13px;"><span style="font-weight:600;">${d.name || d.ip}</span> <span style="color:#666; font-family:monospace;">${d.ip}</span></div>`;
+                });
+            }
+            return html;
+        }
+
+        async function renderHistoryDetail() {
+            const body = document.getElementById('history-detail-body');
+            if (!body) return;
+            body.innerHTML = '<div style="color:#888;">Loading...</div>';
+            const base = isCloudMode ? CLOUD_URL : '';
+            try {
+                const r = await fetch(`${base}/api/history/summary?period=${historyModalPeriod}`);
+                if (!r.ok) { body.innerHTML = '<div style="color:#f8312f;">Failed to load history.</div>'; return; }
+                const data = await r.json();
+                lastHistoryData = { since: data.since, totalChecks: data.totalChecks, acknowledgedProblemCount: data.acknowledgedProblemCount, devicesWithAcknowledgedProblems: data.devicesWithAcknowledgedProblems || [] };
+                const rawUnack = data.devicesWithUnacknowledgedProblems || [];
+                historyUnackEnriched = rawUnack.map(d => {
+                    const dev = cachedDevices.find(c => (c.ip || '').trim() === (d.ip || '').trim());
+                    return { ...d, type: dev ? (dev.type || '') : '', floor_id: dev ? (dev.floor_id || '') : '' };
+                });
+                body.innerHTML = buildHistoryBodyHtml(lastHistoryData);
+            } catch (e) {
+                body.innerHTML = '<div style="color:#f8312f;">Error: ' + (e.message || 'Failed to load') + '</div>';
+            }
+        }
+
+        function setHistoryFilterType(v) { historyFilterType = v || ''; }
+        function setHistoryFilterOffline(v) { historyFilterOfflineMin = v || 0; }
+        function setHistoryFilterSite(v) { historyFilterSite = v || ''; }
+
+        function renderHistoryDetailBody() {
+            const body = document.getElementById('history-detail-body');
+            if (!body || !lastHistoryData) return;
+            body.innerHTML = buildHistoryBodyHtml(lastHistoryData);
+        }
+
+        function historySelectAll() {
+            document.querySelectorAll('.history-ack-check').forEach(cb => { cb.checked = true; });
+            updateHistoryAckSelectedBtn();
+        }
+        function historySelectNone() {
+            document.querySelectorAll('.history-ack-check').forEach(cb => { cb.checked = false; });
+            updateHistoryAckSelectedBtn();
+        }
+
+        // === CAMERA → NVR LINKING (by name: NVR1 ↔ cameras starting with 1, etc.) ===
+        function getLeadingDigitFromName(name) {
+            if (!name || typeof name !== 'string') return null;
+            const m = String(name).trim().match(/^[^0-9]*([1-9])/);
+            return m ? parseInt(m[1], 10) : null;
+        }
+        function getNvrDigitFromName(name) {
+            if (!name || typeof name !== 'string') return null;
+            const m = String(name).trim().match(/nvr\s*[-]?\s*(\d)/i);
+            return m ? parseInt(m[1], 10) : null;
+        }
+        function findNvrForCamera(cameraName) {
+            const digit = getLeadingDigitFromName(cameraName);
+            if (digit == null || !cachedDevices.length) return null;
+            return cachedDevices.find(d => {
+                if (getUiType(d) !== 'nvr') return false;
+                const nvrDigit = getNvrDigitFromName(d.name);
+                return nvrDigit != null && nvrDigit === digit;
+            }) || null;
+        }
+
+        // === MODALS ===
         let currentModalType=null, cachedDevices=[], currentSort={col:'status',dir:1};
+        let lastDevicesSig='', pollCount=0;
+        let cachedMonitorSettings = { deviceConnectionTemplate: 'http://{{ip}}' };
+        let cachedDeviceNotes = {};
+        let cachedDeviceLoginUrls = {};
+        let currentDeviceIpForNote = null;
+
+        // Normalize so we never duplicate http/https (e.g. http://https//host -> https://host)
+        function normalizeConnectionUrl(value) {
+            if (!value || typeof value !== 'string') return '';
+            const s = value.trim();
+            if (!s) return '';
+            const lower = s.toLowerCase();
+            if (lower.startsWith('https://')) return s;
+            if (lower.startsWith('http://')) return s;
+            if (lower.startsWith('https//')) return 'https://' + s.slice(7);
+            if (lower.startsWith('http//')) return 'http://' + s.slice(6);
+            return s; // hostname or IP, no scheme
+        }
+        function buildConnectionUrl(d, template, perDeviceLoginUrl) {
+            if (perDeviceLoginUrl && String(perDeviceLoginUrl).trim()) {
+                const u = normalizeConnectionUrl(perDeviceLoginUrl);
+                if (u) return u.startsWith('http') ? u : 'http://' + u;
+            }
+            const ip = (d.ip || '').trim();
+            const name = (d.name || '').trim();
+            if (!ip && !name) return '';
+            const raw = ip || name;
+            const alreadyUrl = /^https?:\/\//i.test(raw) || /^https?\/\//i.test(raw);
+            if (alreadyUrl) {
+                const u = normalizeConnectionUrl(raw);
+                return u.startsWith('http') ? u : 'http://' + u;
+            }
+            const built = (template || 'http://{{ip}}').replace(/\{\{ip\}\}/gi, ip).replace(/\{\{name\}\}/gi, name).trim();
+            const u = normalizeConnectionUrl(built);
+            return u.startsWith('http') ? u : 'http://' + u;
+        }
         function openModal(t){ 
             currentModalType=t; 
             document.getElementById('modal-search').value=''; 
@@ -697,6 +1233,329 @@
         function closeModal(){ document.getElementById('modal-overlay').classList.remove('active'); currentModalType=null; }
         document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target.id==='modal-overlay')closeModal();});
         
+        // --- DEVICE POP-OUT LOGIC (UPDATED WITH DRIVE VIZ) ---
+        // True if device is storage type and has any drive in warning state (DEGRADED, Rebuild, etc.)
+        function deviceHasDriveWarning(d) {
+            const t = getUiType(d);
+            if (!['nvr','hardware','san','nas'].includes(t)) return false;
+            const det = safeParseDetails(d.details);
+            const note = (det && det.note) ? String(det.note) : '';
+            if (!note || !/Disk\s*\d+/i.test(note)) return false;
+            let totalDrives = parseInt(det.diskCount, 10) || 0;
+            if (totalDrives <= 0) {
+                const m = note.match(/(\d+)\s*Drives?/i) || note.match(/Cap:\s*[\d.]+\s*TB\s*\|\s*(\d+)/i);
+                if (m) totalDrives = parseInt(m[1], 10) || 0;
+            }
+            const diskNums = (note.match(/Disk\s*(\d+)/gi) || []).map(s => parseInt(s.match(/\d+/)?.[0], 10)).filter(n => n > 0);
+            if (totalDrives <= 0 && diskNums.length > 0) totalDrives = Math.max(...diskNums);
+            if (totalDrives <= 0) return false;
+            const statusByDrive = parseDriveStatusByNumber(note, totalDrives);
+            return Object.values(statusByDrive).some(v => v === 'warning');
+        }
+        // Parse note into per-drive status: driveStatus[driveNum] = 'ok'|'warning'|'error'. Drive numbers 1-based.
+        function parseDriveStatusByNumber(note, totalDrives) {
+            const statusByDrive = {};
+            for (let i = 1; i <= totalDrives; i++) statusByDrive[i] = 'ok';
+            if (!note || typeof note !== 'string') return statusByDrive;
+            const n = note;
+            // "Disk 3 FAIL", "Disk 2 Offline", "Disk 1 : FAIL"
+            (n.match(/Disk\s*(\d+)\s*(?:FAIL|Offline|Bad|Error)/gi) || []).forEach(s => {
+                const num = parseInt(s.match(/Disk\s*(\d+)/i)?.[1], 10);
+                if (num >= 1) statusByDrive[num] = 'error';
+            });
+            (n.match(/Disk\s*(\d+)\s*:\s*(FAIL|Offline|Bad|Error)/gi) || []).forEach(s => {
+                const num = parseInt(s.match(/Disk\s*(\d+)/i)?.[1], 10);
+                if (num >= 1) statusByDrive[num] = 'error';
+            });
+            // "Disk 3: Rebuild", "Disk 2: DEGRADED", "Disk 1 Unformatted"
+            (n.match(/Disk\s*(\d+)[:\s]*(?:Warning|Unformatted|Warn|DEGRADED|Rebuild|Smart)/gi) || []).forEach(s => {
+                const num = parseInt(s.match(/Disk\s*(\d+)/i)?.[1], 10);
+                if (num >= 1 && statusByDrive[num] !== 'error') statusByDrive[num] = 'warning';
+            });
+            (n.match(/Disk\s*(\d+)\s*:\s*(?:Warning|Unformatted|Warn|DEGRADED|Rebuild|Smart)/gi) || []).forEach(s => {
+                const num = parseInt(s.match(/Disk\s*(\d+)/i)?.[1], 10);
+                if (num >= 1 && statusByDrive[num] !== 'error') statusByDrive[num] = 'warning';
+            });
+            return statusByDrive;
+        }
+        // Only for storage devices (nvr, hardware/SAN/NAS). Renders one block per drive; missing drives (expected > actual) as red blocks.
+        function generateDriveBarHtml(note, deviceType, details) {
+            if (!note) return '';
+            const t = (deviceType || '').toLowerCase();
+            const isStorage = t === 'nvr' || t === 'hardware' || t === 'san' || t === 'nas' || (t === 'server' && (note.includes('Cap:') || note.includes('Drives') || note.includes('RAID')));
+            const hasDriveInfo = note.includes('Cap:') || note.includes('Drives') || note.includes('RAID') || note.includes('Disk ') || note.includes('All drives OK');
+            if (!isStorage || !hasDriveInfo) return '';
+
+            let totalDrives = 0;
+            if (details && (details.diskCount != null && details.diskCount !== '')) totalDrives = parseInt(details.diskCount, 10) || 0;
+            if (totalDrives <= 0) {
+                const drivesMatch = note.match(/(\d+)\s*Drives?/i) || note.match(/Cap:\s*[\d.]+\s*TB\s*\|\s*(\d+)/i);
+                if (drivesMatch) totalDrives = parseInt(drivesMatch[1], 10) || 0;
+            }
+            const diskMatches = note.match(/Disk\s*(\d+)/gi) || [];
+            const diskNumbers = diskMatches.map(m => { const n = m.match(/\d+/); return n ? parseInt(n[0], 10) : 0; }).filter(n => n > 0);
+            const maxDiskNum = diskNumbers.length > 0 ? Math.max(...diskNumbers) : 0;
+            if (totalDrives <= 0 && maxDiskNum > 0) totalDrives = maxDiskNum;
+            totalDrives = Math.max(totalDrives, maxDiskNum, 1);
+
+            let expectedDrives = totalDrives;
+            const expectedMatch = note.match(/expected\s+(\d+)/i);
+            if (expectedMatch) expectedDrives = Math.max(parseInt(expectedMatch[1], 10) || totalDrives, totalDrives);
+
+            const statusByDrive = parseDriveStatusByNumber(note, totalDrives);
+            const segmentWidth = 100 / expectedDrives;
+            let barSegments = '';
+            for (let i = 1; i <= expectedDrives; i++) {
+                const st = i <= totalDrives ? (statusByDrive[i] || 'ok') : 'error';
+                const color = st === 'error' ? '#f8312f' : (st === 'warning' ? '#ffc107' : '#00d26a');
+                const title = i <= totalDrives ? `Drive ${i}: ${st}` : `Drive ${i}: missing`;
+                barSegments += `<div class="drive-block" style="width:${segmentWidth}%;background:${color};" title="${title}"></div>`;
+            }
+            const bayLabel = expectedDrives > totalDrives ? `${totalDrives} of ${expectedDrives} BAY` : `${expectedDrives} BAY`;
+            return `<div style="margin-top:10px; margin-bottom:5px;">
+                        <div style="font-size:10px; color:#888; margin-bottom:2px; font-weight:bold;">DRIVE STATUS (${bayLabel})</div>
+                        <div style="width:100%; height:12px; background:#222; border-radius:2px; display:flex; overflow:hidden;">${barSegments}</div>
+                    </div>`;
+        }
+
+        function openDeviceModal(ip) {
+            closeModal();
+            const d = cachedDevices.find(dev => dev.ip === ip);
+            if (!d) return;
+            currentDeviceIpForNote = d.ip || null;
+
+            const pop = document.getElementById('device-detail-modal');
+            pop.style.display = 'flex'; // Ensure visible first
+            setTimeout(()=> pop.classList.add('active'), 10); // Then fade in
+
+            document.getElementById('dd-name').innerText = d.name;
+            document.getElementById('dd-sub').innerText = `${(d.type||'DEVICE').toUpperCase()} • ${d.ip||'No IP'}`;
+
+            const cont = document.getElementById('dd-content');
+            const det = safeParseDetails(d.details);
+            const template = (cachedMonitorSettings.deviceConnectionTemplate || 'http://{{ip}}').trim();
+            const perDeviceLogin = cachedDeviceLoginUrls[d.ip];
+            const connectionUrl = buildConnectionUrl(d, template, perDeviceLogin);
+
+            let effectiveStatus = (d.status === 'online' && deviceHasDriveWarning(d)) ? 'amber' : d.status;
+            const uiType = getUiType(d);
+            const isCamera = uiType === 'cctv' || (d.type && (d.type.toLowerCase() === 'cctv' || d.type.toLowerCase() === 'camera'));
+            const nvrDevice = isCamera ? findNvrForCamera(d.name) : null;
+            // If camera is online but its linked NVR is down, show as amber (can't record)
+            if (isCamera && nvrDevice && (nvrDevice.status === 'offline' || nvrDevice.status === 'amber') && effectiveStatus === 'online') effectiveStatus = 'amber';
+            let stColor = effectiveStatus === 'online' ? '#00d26a' : (effectiveStatus === 'amber' ? '#ffc107' : '#f8312f');
+            const lastSeenStr = d.updatedAt ? new Date(d.updatedAt).toLocaleString() : '—';
+            const lastIssueStr = (d.last_issue || d.last_seen) ? new Date(d.last_issue || d.last_seen).toLocaleString() : null;
+            const isFirewall = uiType === 'firewall';
+            let displayDet = isCamera ? getCameraDisplayDetails(det) : (isFirewall ? (() => { const o = { ...det }; delete o.Up; if (o.uptime === '0d') delete o.uptime; return o; })() : det);
+            if (isCamera && d.status === 'offline') displayDet = { ...displayDet, note: 'Offline' };
+            if (isCamera && d.status === 'online' && d.upSince) {
+                const u = (displayDet.uptime || '').trim();
+                if (u === '?' || u === '1m' || u === '<1m') displayDet = { ...displayDet, uptime: formatSeenFor(d.upSince) };
+            }
+
+            const connectHref = connectionUrl ? connectionUrl.replace(/"/g,'&quot;') : '#';
+            const nvrRow = (isCamera && nvrDevice) ? `<div class="dd-row"><span class="dd-label">NVR</span><span class="dd-value"><a href="#" onclick="event.preventDefault(); document.getElementById('device-detail-modal').classList.remove('active'); document.getElementById('device-detail-modal').style.display='none'; openDeviceModal('${(nvrDevice.ip||'').replace(/'/g,"\\'")}'); return false;" style="color:#4a9eff;">${String(nvrDevice.name||'NVR').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</a></span></div>` : '';
+            const statusSuffix = (isCamera && nvrDevice && (nvrDevice.status === 'offline' || nvrDevice.status === 'amber') && d.status === 'online') ? ' <span style="color:#888;font-weight:normal;">(NVR down — not recording)</span>' : '';
+            let html = `
+                <div class="dd-row"><span class="dd-label">Status</span><span class="dd-value" style="color:${stColor}">● ${effectiveStatus.toUpperCase()}${statusSuffix}</span></div>
+                <div class="dd-row"><span class="dd-label">Last Seen</span><span class="dd-value">${lastSeenStr}</span></div>
+                ${lastIssueStr ? `<div class="dd-row"><span class="dd-label">Last issue / down</span><span class="dd-value" style="color:#f8312f;">${lastIssueStr}</span></div>` : ''}
+                <div class="dd-row"><span class="dd-label">Connect</span><span class="dd-value">${connectionUrl ? `<a href="${connectHref}" target="_blank" rel="noopener" style="color:#4a9eff;">Open in new tab</a>` : '—'}</span></div>
+                ${nvrRow}
+                <div class="dd-section">Login page</div>
+                ${isCloudMode ? `<div style="font-size:12px; color:#888; padding:6px 0;">${String(perDeviceLogin || '—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><div style="font-size:11px; color:#666;">Edits disabled in cloud view.</div>` : `<input type="text" id="dd-login-url" placeholder="e.g. https://host/ui/#/login or leave blank to use default" value="${(perDeviceLogin || '').replace(/"/g,'&quot;')}" style="width:100%; box-sizing:border-box; background:#222; color:#eee; border:1px solid #444; padding:8px; border-radius:6px; font-size:13px; font-family:monospace;"><button class="control-btn" style="margin-top:6px;" onclick="saveDeviceLoginUrl()">Save login page</button>`}
+                <div class="dd-section">Details</div>
+            `;
+
+            const sysNameVal = displayDet.sysName ? String(displayDet.sysName).trim() : '';
+            if(shouldShowLabel(uiType,'sysName')&&sysNameVal&&sysNameVal.toLowerCase()!=='unknown') html += `<div class="dd-row"><span class="dd-label">System Name</span><span class="dd-value">${displayDet.sysName}</span></div>`;
+            const showUptime = displayDet.uptime && (uiType !== 'firewall' || displayDet.uptime !== '0d');
+            if(shouldShowLabel(uiType,'uptime')&&showUptime) html += `<div class="dd-row"><span class="dd-label">Uptime</span><span class="dd-value">${displayDet.uptime}</span></div>`;
+            if(shouldShowLabel(uiType,'model')&&displayDet.model) html += `<div class="dd-row"><span class="dd-label">Model</span><span class="dd-value">${displayDet.model}</span></div>`;
+            if(shouldShowLabel(uiType,'Model')&&displayDet.Model) html += `<div class="dd-row"><span class="dd-label">Model</span><span class="dd-value">${displayDet.Model}</span></div>`;
+            if(shouldShowLabel(uiType,'serial')&&displayDet.serial) html += `<div class="dd-row"><span class="dd-label">Serial</span><span class="dd-value">${displayDet.serial}</span></div>`;
+            if(shouldShowLabel(uiType,'mac')&&displayDet.mac) html += `<div class="dd-row"><span class="dd-label">MAC Address</span><span class="dd-value">${displayDet.mac}</span></div>`;
+            if (isCamera && (displayDet.cpu > 0 || displayDet.ram > 0 || displayDet.disk > 0)) {
+                if(shouldShowLabel(uiType,'cpu')&&displayDet.cpu > 0) html += `<div class="dd-row"><span class="dd-label">CPU</span><span class="dd-value">${displayDet.cpu}%</span></div>`;
+                if(shouldShowLabel(uiType,'ram')&&displayDet.ram > 0) html += `<div class="dd-row"><span class="dd-label">RAM</span><span class="dd-value">${displayDet.ram}%</span></div>`;
+                if(shouldShowLabel(uiType,'disk')&&displayDet.disk > 0) html += `<div class="dd-row"><span class="dd-label">Disk</span><span class="dd-value">${displayDet.disk}%</span></div>`;
+            }
+            if (isCamera && (displayDet.HikvisionDiskSize || displayDet.HikvisionMemSize)) {
+                if(shouldShowLabel(uiType,'HikvisionDiskSize')&&displayDet.HikvisionDiskSize) html += `<div class="dd-row"><span class="dd-label">Disk Size</span><span class="dd-value">${String(displayDet.HikvisionDiskSize).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></div>`;
+                if(shouldShowLabel(uiType,'HikvisionMemSize')&&displayDet.HikvisionMemSize) html += `<div class="dd-row"><span class="dd-label">Memory</span><span class="dd-value">${String(displayDet.HikvisionMemSize).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></div>`;
+            }
+            if(shouldShowLabel(uiType,'HikvisionSysTime')&&isCamera && displayDet.HikvisionSysTime) html += `<div class="dd-row"><span class="dd-label">Device Time</span><span class="dd-value">${String(displayDet.HikvisionSysTime).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></div>`;
+            if(shouldShowLabel(uiType,'Traffic')&&isCamera && (displayDet.Total_Recv || displayDet.Total_Sent) && (displayDet.Total_Recv !== '0.00 GB' || displayDet.Total_Sent !== '0.00 GB')) {
+                const recv = displayDet.Total_Recv || '—', sent = displayDet.Total_Sent || '—';
+                html += `<div class="dd-row"><span class="dd-label">Traffic</span><span class="dd-value">↓ ${String(recv).replace(/&/g,'&amp;')} / ↑ ${String(sent).replace(/&/g,'&amp;')}</span></div>`;
+            }
+
+            const driveBar = shouldShowLabel(uiType,'driveBar') ? generateDriveBarHtml(det.note, uiType, det) : null;
+            if (driveBar) {
+                html += `<div class="dd-section">Storage & Status</div>`;
+                html += driveBar;
+            }
+            if (uiType === 'printer' && (det.note || '').match(/[CMYK]:/)) {
+                const rawNote = det.note || '';
+                const tr = /([CMYK]):(\w+)%?/g;
+                let m;
+                const ts = {};
+                while ((m = tr.exec(rawNote)) !== null) { ts[m[1]] = m[2] === 'OK' ? 100 : parseInt(m[2], 10); }
+                if (Object.keys(ts).length > 0) {
+                    html += `<div class="dd-section">Supplies</div><div class="stat-container" style="margin-top:6px;">`;
+                    ['C','M','Y','K'].forEach(cl => {
+                        if (ts[cl] !== undefined) {
+                            const css = cl === 'C' ? 'fill-cyan' : (cl === 'M' ? 'fill-magenta' : (cl === 'Y' ? 'fill-yellow' : 'fill-black'));
+                            const pct = Math.min(100, Math.max(0, ts[cl]));
+                            const label = cl === 'C' ? 'Cyan' : (cl === 'M' ? 'Magenta' : (cl === 'Y' ? 'Yellow' : 'Black'));
+                            html += `<div class="toner-row"><span class="toner-label" style="width:50px;">${label}</span><div class="stat-track" style="height:8px;"><div class="stat-fill ${css}" style="width:${pct}%"></div></div><span style="font-size:10px; color:#888; margin-left:6px;">${pct}%</span></div>`;
+                        }
+                    });
+                    html += `</div>`;
+                }
+            }
+            let noteForDisplay = displayDet.note ? String(displayDet.note) : '';
+            if (isCamera && d.status === 'offline') noteForDisplay = 'Offline';
+            if (isFirewall && noteForDisplay) noteForDisplay = noteForDisplay.replace(/\s*Up:\s*0d\s*\/?\s*/gi, '').replace(/\s*[Uu]ptime:\s*0d\s*/gi, '').replace(/\b0d\s*\/\s*uptime:\s*\d+d/g, '').replace(/\bUp:\s*\d+d\s*\/\s*uptime:\s*\d+d/gi, '').trim();
+            const noteDisplay = noteForDisplay ? formatNoteForDisplay(noteForDisplay) : '';
+            if(shouldShowLabel(uiType,'note')&&noteDisplay) html += `<div style="font-family:monospace; color:#ccc; font-size:13px; background:#111; padding:8px; border-radius:4px; margin-top:5px;">${noteDisplay}</div>`;
+            if (!isCloudMode && (d.status === 'offline' || d.status === 'amber')) {
+                html += `<div class="dd-section">Acknowledge fault</div><div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;"><select id="ack-duration" style="background:#333; color:#fff; border:1px solid #444; padding:6px 10px; border-radius:6px;"><option value="until_next_issue">Clear until next problem</option><option value="1h">1 hour</option><option value="1d">1 day</option><option value="until_online">Until device is online again</option><option value="forever">Forever</option></select><button class="control-btn" onclick="acknowledgeDeviceFromModal('${(d.ip||'').replace(/'/g, "\\'")}')">Acknowledge</button></div>`;
+            }
+            if (isCloudMode) {
+                html += `<div class="dd-section">Notes</div><div style="font-size:12px; color:#888; padding:6px 0; white-space:pre-wrap;">${String(cachedDeviceNotes[d.ip] || '—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><div style="font-size:11px; color:#666;">Edits disabled in cloud view.</div>`;
+            } else {
+                html += `<div class="dd-section">Notes</div><textarea id="dd-device-note" rows="3" placeholder="Add a note for this device..." style="width:100%; box-sizing:border-box; background:#222; color:#eee; border:1px solid #444; padding:8px; border-radius:6px; font-size:13px; resize:vertical;"></textarea><button class="control-btn" style="margin-top:6px;" onclick="saveDeviceNote()">Save note</button>`;
+            }
+            html += `<div class="dd-section">Debug Data</div>`;
+            let debugDet = isCamera ? getCameraDisplayDetails(det) : { ...det };
+            delete debugDet.Up;
+            if (uiType === 'firewall' && debugDet.uptime === '0d') delete debugDet.uptime;
+            if (isCamera) {
+                delete debugDet.cpu; delete debugDet.disk; delete debugDet.ram;
+                if (debugDet.uptime === '?') delete debugDet.uptime;
+            }
+            html += `<div style="max-height:150px; overflow:auto; background:#000; padding:10px; font-family:monospace; font-size:11px; color:#0f0; border:1px solid #333;">${JSON.stringify(debugDet, null, 2)}</div>`;
+
+            cont.innerHTML = html;
+            const noteEl = document.getElementById('dd-device-note');
+            if (noteEl) noteEl.value = cachedDeviceNotes[d.ip] || '';
+        }
+
+        async function saveDeviceLoginUrl() {
+            if (isCloudMode) return;
+            if (!currentDeviceIpForNote) return;
+            const el = document.getElementById('dd-login-url');
+            const loginUrl = el ? el.value.trim() : '';
+            const base = isCloudMode ? CLOUD_URL : '';
+            try {
+                const r = await fetch(base + '/api/device-login-urls', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip: currentDeviceIpForNote, loginUrl: loginUrl }) });
+                if (r.ok) {
+                    const data = await r.json();
+                    if (data.urls) cachedDeviceLoginUrls = data.urls;
+                    if (loginUrl) cachedDeviceLoginUrls[currentDeviceIpForNote] = loginUrl;
+                    else delete cachedDeviceLoginUrls[currentDeviceIpForNote];
+                    if (el) el.placeholder = 'Saved.';
+                    setTimeout(() => { const e = document.getElementById('dd-login-url'); if (e) e.placeholder = 'e.g. https://host/ui/#/login or leave blank to use default'; }, 2000);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function saveDeviceNote() {
+            if (isCloudMode) return;
+            if (!currentDeviceIpForNote) return;
+            const noteEl = document.getElementById('dd-device-note');
+            const note = noteEl ? noteEl.value : '';
+            const base = isCloudMode ? CLOUD_URL : '';
+            try {
+                const r = await fetch(base + '/api/device-notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip: currentDeviceIpForNote, note: note }) });
+                if (r.ok) {
+                    cachedDeviceNotes[currentDeviceIpForNote] = note;
+                    if (noteEl) noteEl.placeholder = 'Saved.';
+                    setTimeout(() => { if (noteEl) noteEl.placeholder = 'Add a note for this device...'; }, 2000);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function acknowledgeDeviceFromModal(ip) {
+            const duration = (document.getElementById('ack-duration') && document.getElementById('ack-duration').value) || 'forever';
+            await addAcknowledge(ip, duration);
+            document.getElementById('device-detail-modal').classList.remove('active');
+            document.getElementById('device-detail-modal').style.display = 'none';
+            updateDashboard();
+        }
+
+        let pendingHistoryAckIps = [];
+        function showHistoryAckDurationForIps(ips) {
+            if (!ips || ips.length === 0) return;
+            pendingHistoryAckIps = ips.map(ip => (ip || '').trim()).filter(Boolean);
+            const bar = document.getElementById('history-ack-duration-bar');
+            if (bar) bar.style.display = 'block';
+        }
+        function cancelHistoryAck() {
+            pendingHistoryAckIps = [];
+            const bar = document.getElementById('history-ack-duration-bar');
+            if (bar) bar.style.display = 'none';
+        }
+        async function confirmHistoryAck(duration) {
+            if (pendingHistoryAckIps.length === 0) return;
+            await addAcknowledgeMultiple(pendingHistoryAckIps, duration);
+            cancelHistoryAck();
+            renderHistoryDetail();
+            updateDashboard();
+        }
+        function updateHistoryAckSelectedBtn() {
+            const wrap = document.getElementById('history-ack-selected-wrap');
+            const checked = document.querySelectorAll('.history-ack-check:checked');
+            const hasSelection = checked && checked.length > 0;
+            if (wrap) wrap.style.display = hasSelection ? 'inline' : 'none';
+        }
+        function acknowledgeSelectedFromHistory() {
+            const checked = document.querySelectorAll('.history-ack-check:checked');
+            if (!checked || checked.length === 0) return;
+            const ips = Array.from(checked).map(el => (el.getAttribute('data-ip') || '').trim()).filter(Boolean);
+            if (ips.length === 0) return;
+            showHistoryAckDurationForIps(ips);
+        }
+
+        async function addAcknowledge(ip, duration) {
+            if (isCloudMode) return;
+            const base = '';
+            try {
+                const r = await fetch(base + '/api/acknowledged-issues');
+                let list = r.ok ? await r.json() : [];
+                if (!Array.isArray(list)) list = [];
+                const ipTrim = (ip || '').trim();
+                const existing = list.findIndex(a => (a.ip || a.deviceIp || '').trim() === ipTrim);
+                const entry = { ip: ipTrim, reason: 'Acknowledged from dashboard', expires: duration || 'forever', acknowledgedAt: new Date().toISOString() };
+                if (existing >= 0) list[existing] = { ...list[existing], ...entry };
+                else list.push(entry);
+                await fetch(base + '/api/acknowledged-issues', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(list) });
+                await loadAcknowledgedIssues();
+            } catch (e) { console.error(e); }
+        }
+        async function addAcknowledgeMultiple(ips, duration) {
+            if (isCloudMode || !ips || ips.length === 0) return;
+            const base = '';
+            try {
+                const r = await fetch(base + '/api/acknowledged-issues');
+                let list = r.ok ? await r.json() : [];
+                if (!Array.isArray(list)) list = [];
+                const entry = { reason: 'Acknowledged from dashboard', expires: duration || 'forever', acknowledgedAt: new Date().toISOString() };
+                ips.forEach(ipTrim => {
+                    const t = (ipTrim || '').trim();
+                    if (!t) return;
+                    const existing = list.findIndex(a => (a.ip || a.deviceIp || '').trim() === t);
+                    const full = { ...entry, ip: t };
+                    if (existing >= 0) list[existing] = { ...list[existing], ...full };
+                    else list.push(full);
+                });
+                await fetch(base + '/api/acknowledged-issues', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(list) });
+                await loadAcknowledgedIssues();
+            } catch (e) { console.error(e); }
+        }
+
         function setSort(c){ 
             if(currentSort.col===c) currentSort.dir*=-1; else{ currentSort.col=c; currentSort.dir=1; } 
             ['status','name','ip','details','updatedAt'].forEach(k=>document.getElementById(`sort-${k}`).innerText=''); 
@@ -704,214 +1563,322 @@
             renderModalContent(); 
         }
         function toggleRaw(i){ document.getElementById('raw-'+i).classList.toggle('active'); }
-        function exportModalCSV(){ /* Placeholder for export logic */ }
 
-        // === RENDERERS ===
+        function getModalDeviceList(){
+            if(!currentModalType) return [];
+            let m = cachedDevices.filter(d=>getUiType(d)===currentModalType);
+            const term = (document.getElementById('modal-search')&&document.getElementById('modal-search').value||'').toLowerCase();
+            if(term) m = m.filter(d=>(d.name&&d.name.toLowerCase().includes(term))||(d.ip&&d.ip.includes(term)));
+            m = m.slice().sort((a,b)=>{ let va=a[currentSort.col]||'', vb=b[currentSort.col]||''; if(currentSort.col==='details') va=JSON.stringify(a.details||{}); if(va<vb) return -1*currentSort.dir; if(va>vb) return 1*currentSort.dir; return 0; });
+            return m;
+        }
+
+        function exportModalCSV(){
+            const m = getModalDeviceList();
+            if(!m.length){ alert('No devices in this list.'); return; }
+            const base = isCloudMode ? CLOUD_URL : '';
+            const headers = ['Name','IP','Type','Status','Note','Uptime','Last Seen'];
+            const rows = m.map(d=>{
+                const det = safeParseDetails(d.details);
+                const note = (det&&det.note) ? String(det.note).replace(/"/g,'""') : '';
+                const uptime = (det&&det.uptime) ? String(det.uptime) : '';
+                return `"${(d.name||'').replace(/"/g,'""')}","${d.ip||''}","${d.type||''}","${d.status||''}","${note}","${uptime}","${d.updatedAt||d.last_seen||''}"`;
+            });
+            const csv = [headers.join(','), ...rows].join('\n');
+            const blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = (currentModalType||'devices') + '-export-' + Date.now() + '.csv';
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        async function refreshModalData(){
+            const btn = document.getElementById('modal-refresh-btn');
+            const base = isCloudMode ? CLOUD_URL : '';
+            if (btn) { btn.disabled = true; btn.textContent = 'Refreshing…'; }
+            try {
+                const r = await fetch(base + '/api/devices');
+                if(r.ok){ cachedDevices = await r.json(); renderModalContent(); }
+            } catch(e){ console.error(e); }
+            finally { if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh'; } }
+        }
+
         function renderModalContent(){ 
             if(!currentModalType) return; 
             const tb=document.getElementById('modal-rows'); 
             tb.innerHTML=''; 
-            let m=cachedDevices.filter(d=>getUiType(d.type)===currentModalType); 
-            const term=document.getElementById('modal-search').value.toLowerCase(); 
-            const showRaw=document.getElementById('chk-show-raw').checked; 
-            
-            if(term) m=m.filter(d=>(d.name&&d.name.toLowerCase().includes(term))||(d.ip&&d.ip.includes(term))); 
-            
-            m.sort((a,b)=>{ 
-                let va=a[currentSort.col]||'', vb=b[currentSort.col]||''; 
-                if(currentSort.col==='details') va=JSON.stringify(a.details||{}); 
-                if(va<vb) return -1*currentSort.dir; if(va>vb) return 1*currentSort.dir; return 0; 
-            }); 
+            const m = getModalDeviceList();
+            const showRaw=document.getElementById('chk-show-raw')&&document.getElementById('chk-show-raw').checked; 
             
             m.forEach((d,i)=>{ 
                 const tr=document.createElement('tr'); 
-                let c=d.status==='online'?'#00d26a':(d.status==='amber'?'#ffc107':'#f8312f'); 
-                const det=safeParseDetails(d.details); 
-                
+                let displayStatus = d.status;
+                // If camera's linked NVR is down, show camera as having an issue (can't record)
+                const isCameraRow = getUiType(d)==='cctv';
+                if (isCameraRow) {
+                    const linkedNvr = findNvrForCamera(d.name);
+                    if (linkedNvr && (linkedNvr.status === 'offline' || linkedNvr.status === 'amber') && displayStatus === 'online') displayStatus = 'amber';
+                }
+                let c=displayStatus==='online'?'#00d26a':(displayStatus==='amber'?'#ffc107':'#f8312f'); 
+                const det=safeParseDetails(d.details);
+                const isPrinterRow = getUiType(d)==='printer';
+                const displayDet = isCameraRow ? getCameraDisplayDetails(det) : det;
                 let dh=""; 
-                if(det.sysName&&det.sysName!==d.name) dh+=`<span style="color:#fff;">${det.sysName}</span><br>`; 
-                if(det.note) dh+=`<span style="color:#aaa;">${det.note}</span><br>`; 
+                if (isCameraRow && displayStatus === 'amber' && d.status === 'online') dh+=`<span style="color:#ffc107;">NVR down — not recording</span><br>`;
+                const sysNameStr = displayDet.sysName ? String(displayDet.sysName).trim() : '';
+                if(sysNameStr&&sysNameStr!==d.name&&sysNameStr.toLowerCase()!=='unknown') dh+=`<span style="color:#fff;">${displayDet.sysName}</span><br>`; 
+                if(displayDet.note) dh+=`<span style="color:#aaa;">${formatNoteForDisplay(displayDet.note)}</span><br>`; 
+                if(isPrinterRow&&(det.note||'').match(/[CMYK]:/)){
+                    const rawNote = det.note || ''; const trg=/([CMYK]):(\w+)%?/g; let mm; const ts={};
+                    while((mm=trg.exec(rawNote))!==null){ ts[mm[1]] = mm[2]==='OK' ? 100 : parseInt(mm[2],10); }
+                    if(Object.keys(ts).length>0){
+                        dh+=`<div class="stat-container" style="margin:6px 0;">`;
+                        ['C','M','Y','K'].forEach(cl=>{
+                            if(ts[cl]!==undefined){
+                                const css=cl==='C'?'fill-cyan':(cl==='M'?'fill-magenta':(cl==='Y'?'fill-yellow':'fill-black'));
+                                const pct=Math.min(100,Math.max(0,ts[cl]));
+                                const label=cl==='C'?'Cyan':(cl==='M'?'Magenta':(cl==='Y'?'Yellow':'Black'));
+                                dh+=`<div class="toner-row"><span class="toner-label" style="width:42px;">${label}</span><div class="stat-track" style="height:6px;"><div class="stat-fill ${css}" style="width:${pct}%"></div></div><span style="font-size:10px;color:#888;margin-left:4px;">${pct}%</span></div>`;
+                            }
+                        });
+                        dh+=`</div>`;
+                    }
+                }
                 dh+=`<span class="detail-sub">`; 
-                Object.entries(det).forEach(([k,v])=>{ if(k!=='sysName'&&k!=='note'&&v!==null&&v!=='') dh+=`${k}: ${v}\n`; }); 
+                Object.entries(displayDet).forEach(([k,v])=>{
+                    if(k==='sysName'&&(!v||String(v).trim().toLowerCase()==='unknown')) return;
+                    if(['cpu','ram','disk'].includes(k)&&(v==null||v===''||Number(v)===0)) return;
+                    if(k!=='sysName'&&k!=='note'&&v!==null&&v!=='') dh+=`${k}: ${v}\n`;
+                }); 
                 dh+=`</span>`; 
-                
-                if(showRaw){ 
-                    const cj=JSON.stringify({...d,_id:undefined},null,2); 
-                    dh+=`<button class="raw-data-btn" onclick="toggleRaw(${i})">RAW</button><div id="raw-${i}" class="raw-view-box">${cj}</div>`; 
-                } 
-                
+                if(showRaw){ const cj=JSON.stringify({...d,_id:undefined},null,2); dh+=`<button class="raw-data-btn" onclick="toggleRaw(${i})">RAW</button><div id="raw-${i}" class="raw-view-box">${cj}</div>`; } 
                 let ipDisplay = d.ip;
-                let link = d.ip;
-                if(!link.startsWith('http')) link = 'http://' + link;
-                
-                tr.innerHTML=`<td><div class="status-dot" style="background:${c};display:inline-block;vertical-align:middle;margin-right:8px;"></div><span style="font-weight:bold;color:${c}">${d.status}</span></td><td style="font-weight:600;font-size:15px;">${d.name}</td><td><a href="${link}" target="_blank" style="color:#00d26a;text-decoration:none;font-family:monospace;border-bottom:1px dotted #00d26a;">${ipDisplay} ↗</a></td><td>${dh||'—'}</td><td style="font-size:11px;color:#666;">${d.updatedAt?new Date(d.updatedAt).toLocaleTimeString():'--'}</td>`; 
+                const link = buildConnectionUrl(d, cachedMonitorSettings.deviceConnectionTemplate || 'http://{{ip}}', cachedDeviceLoginUrls[d.ip]) || ('http://' + (d.ip||'').trim());
+                tr.innerHTML=`<td><div class="status-dot" style="background:${c};display:inline-block;vertical-align:middle;margin-right:8px;"></div><span style="font-weight:bold;color:${c}">${displayStatus}</span></td><td style="font-weight:600;font-size:15px;cursor:pointer;" onclick="openDeviceModal('${(d.ip||'').replace(/'/g,"\\'")}')">${d.name} 🔍</td><td><a href="${link.replace(/"/g,'&quot;')}" target="_blank" style="color:#00d26a;text-decoration:none;font-family:monospace;border-bottom:1px dotted #00d26a;">${ipDisplay} ↗</a></td><td>${dh||'—'}</td><td style="font-size:11px;color:#666;">${d.updatedAt?new Date(d.updatedAt).toLocaleTimeString():'--'}</td>`; 
                 tb.appendChild(tr); 
             }); 
         }
 
         function buildGenericService(d, st, det) {
             let p=[]; 
-            if(det.sysName&&det.sysName!==d.name) p.push(det.sysName); 
-            if(det.note) p.push(det.note); 
+            const sn = (det.sysName||'').trim();
+            if(sn&&sn!==d.name&&sn.toLowerCase()!=='unknown') p.push(det.sysName); 
+            if(det.note) p.push(formatNoteForDisplay(det.note)); 
             if(det.uptime) p.push(det.uptime); 
-            Object.keys(det).forEach(k=>{ if(['cpu','ram','disk','mem','hdd'].some(t=>k.toLowerCase().includes(t))) p.push(`${k}: ${det[k]}`); }); 
-            
-            return `<div class="service-item"><div style="display:flex;flex-direction:column;overflow:hidden;flex:1;min-width:0;"><span style="font-weight:600;">${d.name}</span>${p.length?`<div class="service-sub" style="color:#777;">${p.join(' • ')}</div>`:''}</div><div class="status-dot ${st}"></div></div>`;
+            Object.keys(det).forEach(k=>{ 
+                if(getUiType(d) !== 'wap' && ['cpu','ram','disk','mem','hdd'].some(t=>k.toLowerCase().includes(t))) {
+                    const v = det[k];
+                    if(v!=null&&v!==''&&Number(v)!==0) p.push(`${k}: ${det[k]}`);
+                }
+            }); 
+            return `<div class="service-item" onclick="openDeviceModal('${d.ip}')"><div style="display:flex;flex-direction:column;overflow:hidden;flex:1;min-width:0;"><span style="font-weight:600;">${d.name}</span>${p.length?`<div class="service-sub" style="color:#777;">${p.join(' • ')}</div>`:''}</div><div class="status-dot ${st}"></div></div>`;
         }
 
-        async function updateDashboard(){ 
-            try{ 
-                const u=isCloudMode?`${CLOUD_URL}/api/devices`:'/api/devices'; 
-                const r=await fetch(u); 
-                const lat=Date.now()-(Date.now()-50); 
-                document.getElementById('net-ping').innerText=lat<100?lat:12; 
-                cachedDevices=await r.json(); 
-                const dev=cachedDevices.filter(d=>d.name&&d.name!=='undefined').sort((a,b)=>(a.name||'').localeCompare(b.name||'')); 
-                
-                if(currentModalType) renderModalContent(); 
-                
-                let h={cloud:'',server:'',nvr:'',esxi:'',printer:'',cctv:'',switch:'',wap:'',tel:'',access:'',hw:'',firewall:''};
-                let c={cloud:0,server:0,nvr:0,esxi:0,printer:0,cctv:0,switch:0,wap:0,tel:0,access:0,hw:0,firewall:0};
-                
-                dev.forEach(d=>{ 
-                    const t=getUiType(d.type); 
-                    const det=safeParseDetails(d.details); 
-                    let st=d.status==='online'?'online':(d.status==='amber'?'amber':'offline'); 
-                    
-                    // --- PRINTER LOGIC (UPDATED) ---
-                    if(t==='printer'){ 
-                        let rawNote = det.note || "";
-                        let errorMsg = "";
-                        const tr=/([CMYK]):(\w+)%?/g; 
-                        let m; 
-                        const ts={}; 
-                        
-                        // Parse toner
-                        while((m=tr.exec(rawNote))!==null){ 
-                            ts[m[1]] = m[2]==='OK' ? 100 : parseInt(m[2]); 
-                        }
-                        
-                        // Extract error part (remove toner strings)
-                        let cleanNote = rawNote.replace(/([CMYK]):\w+%?/g, '').replace(/\|/g, '').trim();
-                        if(cleanNote.length > 2 && !cleanNote.includes("OK")) errorMsg = cleanNote;
+// --- CCTV NOTE FORMATTER ---
+function formatCctvNote(note) {
+    if (!note) return '';
+    if (!note.includes('|')) return note; // Safety check
 
-                        // Traffic Light Logic
-                        // AMBER only if toner < 2% (was 15)
-                        let isLow = Object.values(ts).some(v => v < 2); 
-                        let isJam = errorMsg.toLowerCase().match(/(jam|empty|no paper|error|offline)/);
+    return note.split('|').map(part => {
+        const txt = part.trim();
+        let cls = 'pill-idle'; // Default grey
+        
+        // Color Logic
+        if (txt.includes('Streaming Active')) cls = 'pill-active';
+        else if (txt.includes('Data Sent')) cls = 'pill-data';
+        else if (txt.includes('FAIL') || txt.includes('Error')) cls = 'pill-active'; // Highlight errors
+        
+        return `<span class="cctv-pill ${cls}">${txt}</span>`;
+    }).join('');
+}
 
-                        if (isJam) st = 'offline';      // RED
-                        else if (isLow) st = 'amber';   // AMBER
-                        else st = 'online';             // GREEN
-
-                        // Build HTML
-                        let tonerBars = "";
-                        if(Object.keys(ts).length>0){ 
-                            tonerBars=`<div class="stat-container">`; 
-                            ['C','M','Y','K'].forEach(cl=>{ 
-                                if(ts[cl]!==undefined){ 
-                                    let css=cl==='C'?'fill-cyan':(cl==='M'?'fill-magenta':(cl==='Y'?'fill-yellow':'fill-black')); 
-                                    tonerBars+=`<div class="toner-row"><span class="toner-label">${cl}</span><div class="stat-track" style="height:4px;"><div class="stat-fill ${css}" style="width:${ts[cl]}%"></div></div></div>`; 
-                                } 
-                            }); 
-                            tonerBars+=`</div>`; 
-                        }
-
-                        // Status Line (Error message right next to name or below)
-                        let statusHtml = errorMsg ? `<div style="font-size:11px; color:#ffffff; margin-top:2px;">⚠️ ${errorMsg}</div>` : "";
-                        
-                        h.printer += `<div class="service-item" style="flex-direction:column;align-items:stretch;padding:10px 0;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <div style="display:flex;flex-direction:column;">
-                                    <span style="font-weight:600;">${d.name}</span>
-                                    ${statusHtml} 
-                                </div>
-                                <div class="status-dot ${st}"></div>
-                            </div>
-                            ${tonerBars}
-                        </div>`; 
-                        c.printer++; 
-                    }
-                    
-                    // --- FIREWALL ---
-                    else if(t==='firewall'){ 
-                        h.firewall+=`<div style="margin-bottom:15px;border-bottom:1px solid #444;padding-bottom:10px;">
-                            <div class="fw-row"><span class="fw-label">Device</span><span class="fw-val">${det.sysName||d.name}</span></div>
-                            <div class="fw-row"><span class="fw-label">Status</span><div class="status-dot ${st}"></div></div>
-                            <div class="fw-row"><span class="fw-label">Uptime</span><span class="fw-val" style="color:#00d26a;">${det.uptime||"N/A"}</span></div>
-                        </div>`; 
-                        c.firewall++; 
-                    }
-                    
-                    // --- SERVERS / ESXI / NVR / SWITCH ---
-                    else if(['server','esxi','nvr','hardware','switch'].includes(t)){ 
-                        let cpu=parseInt(det.cpu||det.CPU||0), ram=parseInt(det.ram||det.RAM||0), disk=parseInt(det.disk||det.DISK||0); 
-                        let sh=''; 
-                        
-                        if(cpu>0||ram>0){ 
-                            sh=`<div class="stat-container">
-                                <div class="stat-row"><span class="stat-label">CPU</span><div class="stat-track"><div class="stat-fill fill-cpu" style="width:${cpu}%"></div></div></div>
-                                ${ram>0?`<div class="stat-row"><span class="stat-label">RAM</span><div class="stat-track"><div class="stat-fill fill-ram" style="width:${ram}%"></div></div></div>`:''}
-                                ${disk>0?`<div class="stat-row"><span class="stat-label">HDD</span><div class="stat-track"><div class="stat-fill fill-disk" style="width:${disk}%"></div></div></div>`:''}
-                            </div>`; 
-                        } 
-                        else if (det.note && det.note.includes("Net: Active")) { 
-                            sh=`<div class="service-sub" style="margin-top:5px;"><span class="badge badge-local" style="font-size:9px;padding:2px 5px;">NETWORK ACTIVE</span></div>`; 
-                        } 
-                        else { 
-                            sh=`<div class="service-sub" style="margin-top:5px;color:#555;">${det.note||"No Stats"}</div>`; 
-                        } 
-                        
-                        let ih=`<div class="service-item" style="flex-direction:column;align-items:stretch;padding:10px 0;"><div style="display:flex;justify-content:space-between;align-items:center;"><div style="display:flex;flex-direction:column;overflow:hidden;flex:1;"><span style="font-weight:600;">${d.name}</span></div><div class="status-dot ${st}"></div></div>${sh}</div>`; 
-                        
-                        if(t==='esxi'){ h.esxi+=ih; c.esxi++; }
-                        else if(t==='nvr'){ h.nvr+=ih; c.nvr++; }
-                        else if(t==='switch'){ h.switch+=ih; c.switch++; }
-                        else if(t==='hardware'){ h.hw+=ih; c.hw++; }
-                        else{ h.server+=ih; c.server++; } 
-                    }
-                    
-                    // --- GENERIC ---
-                    else{ 
-                        const it=buildGenericService(d,st,det); 
-                        if(t==='cctv'){ h.cctv+=it; c.cctv++; }
-                        else if(t==='wap'){ h.wap+=it; c.wap++; }
-                        else if(t==='telephone'){ h.tel+=it; c.tel++; }
-                        else if(t==='access_control'){ h.access+=it; c.access++; }
-                        else if(t==='service'){ h.cloud+=it; c.cloud++; }
-                        else{ h.hw+=it; c.hw++; } 
-                    } 
-                });
-
-                // UPDATE DOM
-                const mi={'cloud':'cloud-window','server':'server-window','nvr':'nvr-list','esxi':'esxi-list','printer':'printer-window','cctv':'cctv-list','switch':'switch-window','wap':'wap-list','tel':'tel-list','access':'access-list','hw':'hardware-list'}; 
-                Object.keys(mi).forEach(k=>{ 
-                    const el=document.getElementById(mi[k]); 
-                    if(el) el.innerHTML = h[k] || '<div class="service-item" style="color:#555;">No devices</div>'; 
-                    const ce=document.getElementById(`c-${k}`); 
-                    if(ce) ce.innerText=`(${c[k]})`; 
-                }); 
-                document.getElementById('firewall-content').innerHTML = h.firewall || '<div style="text-align:center;color:#666;">No Firewall Found</div>';
-                
-                // Update device markers on the map
-                plotDevicesOnMap();
+async function updateDashboard(){ 
+    try{ 
+        const base = isCloudMode ? CLOUD_URL : '';
+        const u = base + '/api/devices';
+        const startTime = performance.now();
+        const r=await fetch(u); 
+        const endTime = performance.now();
+        const latencyMs = Math.round(endTime - startTime);
+        const netPingEl = document.getElementById('net-ping');
+        if (netPingEl) {
+            netPingEl.innerText = latencyMs;
+            netPingEl.style.color = latencyMs <= 50 ? '#00d26a' : (latencyMs <= 100 ? '#ffc107' : '#f8312f');
+        } 
+        cachedDevices=await r.json();
+        await Promise.all([loadAcknowledgedIssues(), loadMonitorSettings(), loadDeviceNotes(), loadDeviceLoginUrls()]);
+        const sig = cachedDevices.length + '|' + cachedDevices.map(d=> (d.ip||'') + ':' + (d.status||'') + ':' + (d.updatedAt||'') + ':' + (d.details&&d.details.note ? String(d.details.note).slice(0,80) : '')).join(';');
+        if (sig === lastDevicesSig) return;
+        lastDevicesSig = sig;
+        pollCount++; if (pollCount % 3 === 0) loadHistoryPanel();
+        const dev=cachedDevices.filter(d=>d.name&&d.name!=='undefined').sort((a,b)=>(a.name||'').localeCompare(b.name||'')); 
+        if(currentModalType) renderModalContent(); 
+        
+        const ackIps = new Set(acknowledgedIssues.map(a => (a.ip || a.deviceIp || '').trim()).filter(Boolean));
+        // Initialize HTML buckets
+        let h={cloud:'',server:'',nvr:'',esxi:'',printer:'',cctv:'',switch:'',wap:'',tel:'',access:'',hw:'',firewall:''};
+        let c={cloud:0,server:0,nvr:0,esxi:0,printer:0,cctv:0,switch:0,wap:0,tel:0,access:0,hw:0,firewall:0};
+        
+        dev.forEach(d=>{ 
+            const t=getUiType(d); 
+            const det=safeParseDetails(d.details); 
+            let st=d.status==='online'?'online':(d.status==='amber'?'amber':'offline'); 
             
-            }catch(e){ console.error(e); } 
-        }
+            // --- PRINTERS ---
+            if(t==='printer'){ 
+                let rawNote = det.note || ""; let errorMsg = ""; const tr=/([CMYK]):(\w+)%?/g; let m; const ts={}; 
+                while((m=tr.exec(rawNote))!==null){ ts[m[1]] = m[2]==='OK' ? 100 : parseInt(m[2]); }
+                let cleanNote = rawNote.replace(/([CMYK]):\w+%?/g, '').replace(/\|/g, '').trim();
+                if(cleanNote.length > 2 && !cleanNote.includes("OK")) errorMsg = cleanNote;
+                let isLow = Object.values(ts).some(v => v < 2); 
+                let isJam = errorMsg.toLowerCase().match(/(jam|empty|no paper|error|offline)/);
+                if (!ackIps.has((d.ip||'').trim())) { if (isJam) st = 'offline'; else if (isLow) st = 'amber'; else st = 'online'; }
+                let tonerBars = "";
+                if(Object.keys(ts).length>0){ 
+                    tonerBars=`<div class="stat-container">`; 
+                    ['C','M','Y','K'].forEach(cl=>{ 
+                        if(ts[cl]!==undefined){ 
+                            let css=cl==='C'?'fill-cyan':(cl==='M'?'fill-magenta':(cl==='Y'?'fill-yellow':'fill-black')); 
+                            tonerBars+=`<div class="toner-row"><span class="toner-label">${cl}</span><div class="stat-track" style="height:4px;"><div class="stat-fill ${css}" style="width:${ts[cl]}%"></div></div></div>`; 
+                        } 
+                    }); 
+                    tonerBars+=`</div>`; 
+                }
+                let statusHtml = errorMsg ? `<div style="font-size:11px; color:#ffffff; margin-top:2px;">⚠️ ${errorMsg}</div>` : "";
+                h.printer += `<div class="service-item" onclick="openDeviceModal('${d.ip}')" style="flex-direction:column;align-items:stretch;padding:10px 0;"><div style="display:flex;justify-content:space-between;align-items:center;"><div style="display:flex;flex-direction:column;"><span style="font-weight:600;">${d.name}</span>${statusHtml}</div><div class="status-dot ${st}"></div></div>${tonerBars}</div>`; c.printer++; 
+            }
+            // --- FIREWALL (CPU/RAM like servers, under latency) ---
+            else if(t==='firewall'){ 
+                const fwUptime = (det.uptime && det.uptime !== '0d') ? det.uptime : null;
+                let cpu = parseInt(det.cpu || det.CPU || 0, 10), ram = parseInt(det.ram || det.RAM || 0, 10);
+                let fwStats = '';
+                if (cpu > 0 || ram > 0) {
+                    fwStats = `<div class="stat-container">${cpu > 0 ? `<div class="stat-row"><span class="stat-label">CPU</span><div class="stat-track"><div class="stat-fill fill-cpu" style="width:${cpu}%"></div></div></div>` : ''}${ram > 0 ? `<div class="stat-row"><span class="stat-label">RAM</span><div class="stat-track"><div class="stat-fill fill-ram" style="width:${ram}%"></div></div></div>` : ''}</div>`;
+                }
+                const fwName = (det.sysName&&String(det.sysName).trim().toLowerCase()!=='unknown') ? det.sysName : d.name;
+                h.firewall+=`<div onclick="openDeviceModal('${d.ip}')" style="cursor:pointer; margin-bottom:15px;border-bottom:1px solid #444;padding-bottom:10px;"><div class="fw-row"><span class="fw-label">Device</span><span class="fw-val">${fwName}</span></div><div class="fw-row"><span class="fw-label">Status</span><div class="status-dot ${st}"></div></div>${fwUptime ? `<div class="fw-row"><span class="fw-label">Uptime</span><span class="fw-val" style="color:#00d26a;">${fwUptime}</span></div>` : ''}${fwStats}</div>`; c.firewall++; 
+            }
+            // --- SWITCHES ---
+            else if(t==='switch'){ 
+                const note = det.note || ''; const sn = (det.sysName||'').trim(); const switchInfo = note || (sn && sn.toLowerCase()!=='unknown' ? det.sysName : '') || 'Online';
+                h.switch+=`<div class="service-item" onclick="openDeviceModal('${d.ip}')" style="flex-direction:column;align-items:stretch;padding:10px 0;"><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-weight:600;">${d.name}</span><div class="status-dot ${st}"></div></div><div class="service-sub" style="margin-top:5px;color:#888;">${switchInfo}</div></div>`; c.switch++; 
+            }
+            // --- NVR & HARDWARE (Disk Checks) - one block per drive; missing drives as red blocks ---
+            else if(t==='nvr' || t==='hardware'){ 
+                const note = det.note || '';
+                const hasDriveInfo = note.includes('Cap:') || note.includes('Drives') || note.includes('RAID') || note.includes('Disk ') || note.includes('All drives OK');
+                let totalDrives = 0;
+                if (det.diskCount != null && det.diskCount !== '') totalDrives = parseInt(det.diskCount, 10) || 0;
+                if (totalDrives <= 0) {
+                    const drivesMatch = note.match(/(\d+)\s*Drives?/i) || note.match(/Cap:\s*[\d.]+\s*TB\s*\|\s*(\d+)/i);
+                    if (drivesMatch) totalDrives = parseInt(drivesMatch[1], 10) || 0;
+                }
+                const diskMatches = note.match(/Disk\s*(\d+)/gi) || [];
+                const diskNumbers = diskMatches.map(m => { const n = m.match(/\d+/); return n ? parseInt(n[0], 10) : 0; }).filter(n => n > 0);
+                const maxDiskNum = diskNumbers.length > 0 ? Math.max(...diskNumbers) : 0;
+                if (totalDrives <= 0 && maxDiskNum > 0) totalDrives = maxDiskNum;
+                totalDrives = Math.max(totalDrives, maxDiskNum, 1);
+                if (totalDrives <= 0 && (note.includes('RAID OK') || note.includes('All drives OK'))) totalDrives = 4;
+                let expectedDrives = totalDrives;
+                const expectedMatch = note.match(/expected\s+(\d+)/i);
+                if (expectedMatch) expectedDrives = Math.max(parseInt(expectedMatch[1], 10) || totalDrives, totalDrives);
+                const statusByDrive = parseDriveStatusByNumber(note, totalDrives);
+                let driveBar = '';
+                if (hasDriveInfo && expectedDrives > 0) {
+                    const segmentWidth = 100 / expectedDrives; let barSegments = '';
+                    for (let i = 1; i <= expectedDrives; i++) {
+                        const stDr = i <= totalDrives ? (statusByDrive[i] || 'ok') : 'error';
+                        const color = stDr === 'error' ? '#f8312f' : (stDr === 'warning' ? '#ffc107' : '#00d26a');
+                        barSegments += `<div class="drive-block" style="width:${segmentWidth}%;background:${color};"></div>`;
+                    }
+                    driveBar = `<div class="stat-container"><div class="stat-row"><span class="stat-label">DISK</span><div class="stat-track" style="display:flex;overflow:hidden;background:#222;">${barSegments}</div></div></div>`;
+                }
+                const hasError = /Disk\s*\d+\s*(FAIL|Offline)/i.test(note);
+                const hasWarning = Object.values(statusByDrive).some(v => v === 'warning') || /drive\(s\)\s*missing|missing\s*drive/i.test(note);
+                if (!ackIps.has((d.ip||'').trim())) { if (hasError) st = 'offline'; else if (hasWarning) st = 'amber'; }
+                const capMatch = note.match(/Cap:\s*([\d.]+)\s*TB/i); const capacity = capMatch ? capMatch[1] + 'TB' : '';
+                let statusMsg = note.replace(/Cap:\s*[\d.]+\s*TB\s*\|\s*/i, '').replace(/\d+\s*Drives?\s*\|\s*/gi, '').trim();
+                let subInfo = capacity ? `${capacity}` : ''; if (statusMsg && statusMsg !== subInfo) subInfo = subInfo ? `${subInfo} • ${statusMsg}` : statusMsg;
+                
+                let ih=`<div class="service-item" onclick="openDeviceModal('${d.ip}')" style="flex-direction:column;align-items:stretch;padding:10px 0;"><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-weight:600;">${d.name}</span><div class="status-dot ${st}"></div></div>${driveBar}${subInfo ? `<div class="service-sub" style="margin-top:5px;color:#888;">${subInfo}</div>` : ''}</div>`; 
+                if(t==='nvr'){ h.nvr+=ih; c.nvr++; } else{ h.hw+=ih; c.hw++; }
+            }
+            // --- SERVERS ---
+            else if(t==='server' || t==='esxi'){ 
+                let cpu=parseInt(det.cpu||det.CPU||0), ram=parseInt(det.ram||det.RAM||0), disk=parseInt(det.disk||det.DISK||0); let sh=''; 
+                if(cpu>0||ram>0){ sh=`<div class="stat-container"><div class="stat-row"><span class="stat-label">CPU</span><div class="stat-track"><div class="stat-fill fill-cpu" style="width:${cpu}%"></div></div></div>${ram>0?`<div class="stat-row"><span class="stat-label">RAM</span><div class="stat-track"><div class="stat-fill fill-ram" style="width:${ram}%"></div></div></div>`:''}${disk>0?`<div class="stat-row"><span class="stat-label">HDD</span><div class="stat-track"><div class="stat-fill fill-disk" style="width:${disk}%"></div></div></div>`:''}</div>`; } else if (det.note) { sh=`<div class="service-sub" style="margin-top:5px;color:#888;">${formatNoteForDisplay(det.note)}</div>`; }
+                let ih=`<div class="service-item" onclick="openDeviceModal('${d.ip}')" style="flex-direction:column;align-items:stretch;padding:10px 0;"><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-weight:600;">${d.name}</span><div class="status-dot ${st}"></div></div>${sh}</div>`; 
+                if(t==='esxi'){ h.esxi+=ih; c.esxi++; } else{ h.server+=ih; c.server++; } 
+            }
+            
+// --- ENHANCED CCTV BLOCK ---
+            else if(t === 'cctv') {
+                let pills = '';
+                let cameraNote = (d.status === 'offline')
+                    ? 'Offline'
+                    : (det.note || '').replace(/\|\s*Uptime:\s*\?/gi, '').replace(/\|\s*$/g, '').trim();
+                if (d.status === 'online' && d.upSince) {
+                    const u = (det.uptime || '').trim();
+                    if (u === '?' || u === '1m' || u === '<1m') {
+                        const seenFor = formatSeenFor(d.upSince);
+                        cameraNote = (det.note || '').replace(/\|\s*Uptime:\s*(?:\?|1m|<1m)\s*/gi, '| ' + seenFor + ' ').replace(/\|\s*$/g, '').trim();
+                    }
+                }
+
+                if (det.resolution || det.fps || det.bitrate) {
+                    if (det.resolution) pills += `<span class="cctv-pill pill-idle">${det.resolution}</span>`;
+                    if (det.fps)        pills += `<span class="cctv-pill pill-active">${det.fps} fps</span>`;
+                    if (det.bitrate)    pills += `<span class="cctv-pill pill-data">${det.bitrate}</span>`;
+                }
+                else if (cameraNote && cameraNote.includes('|')) {
+                    pills = formatCctvNote(cameraNote);
+                }
+                else if (cameraNote) {
+                    pills = `<span style="color:#888; font-size: 0.8em;">${cameraNote}</span>`;
+                }
+                else {
+                    pills = `<span style="color:#444; font-style: italic; font-size: 0.8em;">No Info</span>`;
+                }
+
+                // If this camera's linked NVR is down, show camera as having an issue (can't record)
+                const linkedNvr = findNvrForCamera(d.name);
+                if (linkedNvr && (linkedNvr.status === 'offline' || linkedNvr.status === 'amber') && st === 'online') st = 'amber';
+
+                const hikCpu = parseInt(det.cpu, 10) || 0, hikRam = parseInt(det.ram, 10) || 0, hikDisk = parseInt(det.disk, 10) || 0;
+                const hikStats = [hikCpu > 0 ? 'CPU ' + hikCpu + '%' : '', hikRam > 0 ? 'RAM ' + hikRam + '%' : '', hikDisk > 0 ? 'Disk ' + hikDisk + '%' : ''].filter(Boolean).join(' · ');
+                const hikStatsLine = hikStats ? `<div class="service-sub" style="margin-top:4px;color:#888;font-size:11px;">${hikStats}</div>` : '';
+
+                h.cctv += `<div class="service-item" onclick="openDeviceModal('${d.ip}')" style="flex-direction:column;align-items:stretch;padding:10px 0;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-weight:600;">${d.name}</span>
+                        <div class="status-dot ${st}"></div>
+                    </div>
+                    <div style="margin-top:5px;">${pills}</div>
+                    ${hikStatsLine}
+                </div>`;
+                c.cctv++;
+            }
+
+            else{ 
+                const it=buildGenericService(d,st,det); 
+                if(t==='wap'){ h.wap+=it; c.wap++; } else if(t==='telephone'){ h.tel+=it; c.tel++; } else if(t==='access_control'){ h.access+=it; c.access++; } else if(t==='service'){ h.cloud+=it; c.cloud++; } else{ h.hw+=it; c.hw++; } 
+            } 
+        });
+
+        const mi={'cloud':'cloud-window','server':'server-window','nvr':'nvr-list','esxi':'esxi-list','printer':'printer-window','cctv':'cctv-list','switch':'switch-window','wap':'wap-list','tel':'tel-list','access':'access-list','hw':'hardware-list'}; 
+        Object.keys(mi).forEach(k=>{ const el=document.getElementById(mi[k]); if(el) el.innerHTML = h[k] || '<div class="service-item" style="color:#555;">No devices</div>'; const ce=document.getElementById(`c-${k}`); if(ce) ce.innerText=`(${c[k]})`; }); 
+        document.getElementById('firewall-content').innerHTML = h.firewall || '<div style="text-align:center;color:#666;">No Firewall Found</div>';
+        plotDevicesOnMap();
+    }catch(e){ console.error(e); } 
+}
 
         // === INITIALIZATION ===
         window.addEventListener('DOMContentLoaded',()=>{ 
             Object.entries({'nvr':'nvr-list','cctv':'cctv-list','printer':'printer-window','switch':'switch-window','wap':'wap-list','telephone':'tel-list','access_control':'access-list','hardware':'hardware-list','server':'server-window','service':'cloud-window','esxi':'esxi-list'}).forEach(([t,id])=>{ 
-                const el=document.getElementById(id); 
-                if(!el) return; 
-                if(hiddenTypes.has(t)){ el.classList.add('minimized'); el.previousElementSibling.querySelector('.toggle-btn')?.classList.add('hidden-active'); } 
-                if(expandedTypes.has(t)){ el.classList.add('expanded'); el.previousElementSibling.querySelector('.expand-btn')?.classList.add('expanded-active'); } 
+                const el=document.getElementById(id); if(!el) return; if(hiddenTypes.has(t)){ el.classList.add('minimized'); el.previousElementSibling.querySelector('.toggle-btn')?.classList.add('hidden-active'); } if(expandedTypes.has(t)){ el.classList.add('expanded'); el.previousElementSibling.querySelector('.expand-btn')?.classList.add('expanded-active'); } 
             }); 
-            startInternalScroll(); 
-            loadMapConfig(); 
-            loadGlobalConfig(); 
-            updateDashboard(); 
-            setInterval(updateDashboard,5000); 
+            startInternalScroll(); loadMapConfig(); loadGlobalConfig(); updateDashboard(); setInterval(updateDashboard,5000); 
         });
     </script>
 </body>
