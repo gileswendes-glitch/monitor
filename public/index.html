@@ -126,7 +126,15 @@
         #map-wrapper .leaflet-container { background: transparent !important; }
         #map { height: 100%; width: 100%; position: relative; z-index: 1; background: transparent !important; }
         #map-title { position: absolute; top: 20px; right: 20px; background: rgba(20, 20, 20, 0.85); color: #e0e0e0; padding: 8px 20px; border-radius: 6px; z-index: 1000; backdrop-filter: blur(5px); border: 1px solid #444; }
-        #map-controls { position: absolute; bottom: 20px; right: 20px; z-index: 1000; display: flex; gap: 10px; }
+        #map-controls { position: absolute; bottom: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+        .map-controls-labels { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: rgba(20, 20, 20, 0.9); border: 1px solid #444; border-radius: 8px; backdrop-filter: blur(8px); font-size: 12px; color: #aaa; }
+        .map-controls-labels label { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; }
+        .map-controls-labels input[type="checkbox"] { cursor: pointer; accent-color: #00d26a; width: 14px; height: 14px; }
+        .map-nav-buttons { display: flex; align-items: center; gap: 4px; padding: 4px; background: rgba(20, 20, 20, 0.9); border: 1px solid #444; border-radius: 10px; backdrop-filter: blur(8px); box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+        .map-nav-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border: none; background: transparent; color: #e0e0e0; border-radius: 8px; cursor: pointer; font-size: 18px; transition: background 0.2s, color 0.2s, transform 0.15s; }
+        .map-nav-btn:hover { background: rgba(0, 210, 106, 0.2); color: #00d26a; transform: scale(1.05); }
+        .map-nav-btn:active { transform: scale(0.98); }
+        .map-nav-btn.pause-btn { min-width: 44px; font-size: 16px; }
         .control-btn { background: rgba(20, 20, 20, 0.85); color: #e0e0e0; border: 1px solid #444; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-size: 14px; backdrop-filter: blur(5px); }
         .header-controls { display: flex; align-items: center; gap: 10px; }
         .toggle-btn, .expand-btn { cursor: pointer; font-size: 16px; opacity: 1; transition: all 0.2s; padding: 5px 6px; border-radius: 6px; }
@@ -234,6 +242,27 @@
         .history-ack { color: #888; font-size: 11px; }
         .history-row.clickable { cursor: pointer; }
         .history-row.clickable:hover { background: rgba(255,255,255,0.05); border-radius: 4px; }
+
+        /* === MAP LABELS & GROUP HIGHLIGHT === */
+        .device-map-label { background: #fff !important; border: 1px solid #333 !important; border-radius: 2px !important; padding: 1px 3px !important; font-size: 10px !important; line-height: 1.2 !important; color: #000 !important; pointer-events: none !important; box-shadow: 0 1px 3px rgba(0,0,0,0.3); font-family: Inter, sans-serif; display: inline-block; text-align: center; }
+        .device-map-label span { color: #000 !important; background: transparent !important; }
+        .device-map-label .device-map-label-name { max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; text-align: center; }
+        .device-map-label .device-map-label-ip { font-size: 9px; color: #555; display: block; margin-top: 0; line-height: 1.15; max-width: 84px; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+        .device-map-label.group { white-space: nowrap; }
+        .device-map-label.group span { font-weight: 600; }
+        .leaflet-tooltip.fault-zone-label { background: rgba(20, 20, 20, 0.9); border: 1px solid #444; border-radius: 6px; padding: 4px 10px; font-size: 11px; }
+
+        /* === MAP MARKER TOOLTIP (mouseover name + IP) === */
+        .device-marker-tooltip { background: rgba(20, 20, 20, 0.95) !important; border: 1px solid #444 !important; border-radius: 6px !important; padding: 6px 10px !important; font-size: 12px !important; color: #e0e0e0 !important; white-space: nowrap; }
+        .device-marker-tooltip .device-tt-name { font-weight: 600; color: #fff; }
+        .device-marker-tooltip .device-tt-ip { font-family: monospace; font-size: 11px; color: #aaa; margin-top: 2px; }
+
+        /* === RADAR PING (locate highlight) === */
+        .radar-ping-wrap { position: relative; width: 80px; height: 80px; margin: -40px 0 0 -40px; pointer-events: none; }
+        .radar-ping-ring { position: absolute; left: 50%; top: 50%; width: 24px; height: 24px; margin: -12px 0 0 -12px; border: 2px solid #4a9eff; border-radius: 50%; animation: radar-ping 1.4s ease-out infinite; }
+        .radar-ping-ring:nth-child(2) { animation-delay: 0.35s; }
+        .radar-ping-ring:nth-child(3) { animation-delay: 0.7s; }
+        @keyframes radar-ping { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(3.2); opacity: 0; } }
 
         /* === MAP: ACKNOWLEDGED / PROBLEM ZONE === */
         .marker-acknowledged { border: 2px dashed #888 !important; opacity: 0.9; }
@@ -383,8 +412,14 @@
             <div id="map-bg"></div>
             <div id="map-title">Loading...</div>
             <div id="map-controls">
-                <button class="control-btn" id="pause-btn" onclick="togglePause()">⏸️ Pause</button>
-                <button class="control-btn" onclick="nextMap()">⏭️ Next</button>
+                <div class="map-controls-labels">
+                    <label><input type="checkbox" id="map-labels-toggle" onchange="toggleMapLabels();"> Labels</label>
+                </div>
+                <div class="map-nav-buttons">
+                    <button type="button" class="map-nav-btn" onclick="prevMap()" title="Previous map">⏮</button>
+                    <button type="button" class="map-nav-btn pause-btn" id="pause-btn" onclick="togglePause()" title="Pause / Play">⏸</button>
+                    <button type="button" class="map-nav-btn" onclick="nextMap()" title="Next map">⏭</button>
+                </div>
             </div>
             <div id="map"></div>
             <div id="map-matrix-rain" aria-hidden="true"><canvas id="matrix-rain-canvas"></canvas></div>
@@ -762,8 +797,11 @@
         ensureMapBgVisible();
         map.whenReady(ensureMapBgVisible);
         var devicesLayer=L.layerGroup().addTo(map); 
+        var deviceLabelsLayer = L.layerGroup().addTo(map);
+        var locateHighlightLayer = L.layerGroup().addTo(map);
         var currentMapLayer; 
         let currentMapIndex=0, isPaused=false;
+        let locateDeviceAfterLoad = null;
         
         async function loadMapConfig(){ 
             try{
@@ -778,7 +816,10 @@
             } 
             loadMap(0); 
         }
+        function prevMap(){ currentMapIndex=(currentMapIndex-1+maps.length)%maps.length; loadMap(currentMapIndex); }
         function nextMap(){ currentMapIndex=(currentMapIndex+1)%maps.length; loadMap(currentMapIndex); }
+        let mapLabelsVisible = false;
+        function toggleMapLabels(){ mapLabelsVisible=!!(document.getElementById('map-labels-toggle')&&document.getElementById('map-labels-toggle').checked); plotDevicesOnMap(); }
         function loadMap(i){ 
             const c=maps[i]; 
             document.getElementById('map-title').innerText=c.name; 
@@ -790,7 +831,66 @@
                 map.fitBounds(b); 
                 ensureMapBgVisible();
                 plotDevicesOnMap();
+                if (locateDeviceAfterLoad) {
+                    addRadarPing(locateDeviceAfterLoad);
+                    locateDeviceAfterLoad = null;
+                }
             } 
+        }
+
+        function deviceIsLocatable(d) {
+            if (!d) return false;
+            const fid = (d.floor_id || '').toString().trim().toLowerCase();
+            if (!fid || fid === 'nomap') return false;
+            let x = null, y = null;
+            if (d.map_coordinates && typeof d.map_coordinates === 'object') {
+                x = parseFloat(d.map_coordinates.x);
+                y = parseFloat(d.map_coordinates.y);
+            } else if (d.x !== undefined && d.y !== undefined) {
+                x = parseFloat(d.x);
+                y = parseFloat(d.y);
+            }
+            if (x == null || y == null) return false;
+            if (x === 0 && y === 0) return false;
+            return true;
+        }
+
+        function addRadarPing(d) {
+            locateHighlightLayer.clearLayers();
+            let x, y;
+            if (d.map_coordinates && typeof d.map_coordinates === 'object') { x = parseFloat(d.map_coordinates.x); y = parseFloat(d.map_coordinates.y); }
+            else { x = parseFloat(d.x); y = parseFloat(d.y); }
+            const icon = L.divIcon({
+                className: 'radar-ping-wrap',
+                html: '<div class="radar-ping-ring"></div><div class="radar-ping-ring"></div><div class="radar-ping-ring"></div>',
+                iconSize: [80, 80],
+                iconAnchor: [40, 40]
+            });
+            const pingMarker = L.marker([y, x], { icon: icon });
+            pingMarker.addTo(locateHighlightLayer);
+            map.panTo([y, x], { animate: true, duration: 0.3 });
+            setTimeout(function() { locateHighlightLayer.removeLayer(pingMarker); }, 4500);
+        }
+
+        function locateDeviceOnMap(ip) {
+            const d = cachedDevices.find(dev => dev.ip === ip);
+            if (!d || !deviceIsLocatable(d)) return;
+            isPaused = true;
+            const btn = document.getElementById('pause-btn');
+            if (btn) btn.innerText = '▶';
+            const fid = String(d.floor_id || '').toLowerCase();
+            const mapIdx = maps.findIndex(m => String(m.id || '').toLowerCase() === fid);
+            if (mapIdx >= 0) {
+                if (currentMapIndex === mapIdx) {
+                    addRadarPing(d);
+                } else {
+                    currentMapIndex = mapIdx;
+                    locateDeviceAfterLoad = d;
+                    loadMap(currentMapIndex);
+                }
+            }
+            document.getElementById('device-detail-modal').classList.remove('active');
+            document.getElementById('device-detail-modal').style.display = 'none';
         }
 
         // === DEVICE MARKERS ===
@@ -875,8 +975,33 @@
             return dt.toLocaleString();
         }
 
+        // Cluster devices by map position (same or very close). Returns Map<key, { devices, cx, cy, sameType, typeName }>.
+        const LABEL_GRID = 28;
+        function clusterMapDevicesByPosition(mapDevices) {
+            const keyToDevices = new Map();
+            mapDevices.forEach(d => {
+                let x, y;
+                if (d.map_coordinates && typeof d.map_coordinates === 'object') { x = parseFloat(d.map_coordinates.x); y = parseFloat(d.map_coordinates.y); }
+                else { x = parseFloat(d.x); y = parseFloat(d.y); }
+                const key = `${Math.round(x / LABEL_GRID)}_${Math.round(y / LABEL_GRID)}`;
+                if (!keyToDevices.has(key)) keyToDevices.set(key, []);
+                keyToDevices.get(key).push({ d, x, y });
+            });
+            const result = new Map();
+            keyToDevices.forEach((arr, key) => {
+                const cx = arr.reduce((s, w) => s + w.x, 0) / arr.length;
+                const cy = arr.reduce((s, w) => s + w.y, 0) / arr.length;
+                const types = [...new Set(arr.map(w => getUiType(w.d)))];
+                const sameType = types.length === 1 && arr.length > 1;
+                const typeName = types[0] ? (types[0].charAt(0).toUpperCase() + types[0].slice(1).replace(/_/g, ' ')) : 'Device';
+                result.set(key, { devices: arr, cx, cy, sameType, typeName });
+            });
+            return result;
+        }
+
         function plotDevicesOnMap() {
             devicesLayer.clearLayers();
+            deviceLabelsLayer.clearLayers();
             const currentMap = maps[currentMapIndex];
             if (!currentMap || !cachedDevices.length) return;
             
@@ -897,10 +1022,37 @@
                 return deviceFloor === currentMapId;
             });
 
+            const positionClusters = clusterMapDevicesByPosition(mapDevices);
             const ackIps = new Set(acknowledgedIssues.map(a => (a.ip || a.deviceIp || '').trim()).filter(Boolean));
             const problemDevices = mapDevices.filter(d => (d.status === 'offline' || d.status === 'amber') && !ackIps.has((d.ip || '').trim()));
 
-            // 1. Draw fault zones (3+ devices in same area) first so they sit behind markers
+            // 1. Same-type overlapping groups: highlight circle + optional group label
+            positionClusters.forEach(cluster => {
+                if (!cluster.sameType || cluster.devices.length < 2) return;
+                const cy = cluster.cy, cx = cluster.cx;
+                const circle = L.circleMarker([cy, cx], {
+                    radius: 38,
+                    color: '#4a9eff',
+                    fillColor: '#4a9eff',
+                    fillOpacity: 0.12,
+                    weight: 2,
+                    dashArray: '6,4'
+                });
+                circle.addTo(devicesLayer);
+                if (mapLabelsVisible) {
+                    const labelText = cluster.devices.length + '× ' + cluster.typeName;
+                    const icon = L.divIcon({
+                        className: 'device-map-label group',
+                        html: '<span style="color:#000!important;background:#fff!important;">' + (labelText.replace(/</g,'&lt;').replace(/>/g,'&gt;')) + '</span>',
+                        iconSize: [50, 14],
+                        iconAnchor: [25, 14]
+                    });
+                    const labelMarker = L.marker([cy, cx], { icon: icon });
+                    labelMarker.addTo(deviceLabelsLayer);
+                }
+            });
+
+            // 2. Fault zones (3+ problem devices in same area)
             const clusters = clusterProblemDevices(problemDevices);
             const PAD = 25;
             clusters.forEach(cluster => {
@@ -931,7 +1083,7 @@
                 poly.addTo(devicesLayer);
             });
 
-            // 2. Individual problem circles and markers
+            // 3. Individual problem circles and markers
             mapDevices.forEach(d => {
                 let x, y;
                 if (d.map_coordinates && typeof d.map_coordinates === 'object') { x = parseFloat(d.map_coordinates.x); y = parseFloat(d.map_coordinates.y); } 
@@ -965,10 +1117,59 @@
                 
                 const marker = L.marker([y, x], { icon: icon });
                 marker.on('click', () => openDeviceModal(d.ip));
+                const tooltipHtml = '<div class="device-tt-name">' + (d.name || 'Device').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div><div class="device-tt-ip">' + (d.ip || '').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+                marker.bindTooltip(tooltipHtml, { permanent: false, direction: 'top', className: 'device-marker-tooltip', offset: [0, -12] });
                 marker.addTo(devicesLayer);
             });
+
+            // 4. Device name labels: black text on white, fixed pixel offset from marker (tracks close when zooming), centred text.
+            if (mapLabelsVisible) {
+                const LABEL_OFFSET_PX = 12; // pixels above marker (stays consistent at any zoom)
+                const keyToDevices = new Map();
+                mapDevices.forEach(d => {
+                    let x, y;
+                    if (d.map_coordinates && typeof d.map_coordinates === 'object') { x = parseFloat(d.map_coordinates.x); y = parseFloat(d.map_coordinates.y); }
+                    else { x = parseFloat(d.x); y = parseFloat(d.y); }
+                    const key = `${Math.round(x / LABEL_GRID)}_${Math.round(y / LABEL_GRID)}`;
+                    const cluster = positionClusters.get(key);
+                    if (cluster && cluster.sameType && cluster.devices.length > 1) return; // already have group label
+                    if (!keyToDevices.has(key)) keyToDevices.set(key, []);
+                    keyToDevices.get(key).push({ d, x, y });
+                });
+                keyToDevices.forEach((arr) => {
+                    const n = arr.length;
+                    arr.forEach((item, idx) => {
+                        const d = item.d, x = item.x, y = item.y;
+                        const name = (d.name || d.ip || 'Device').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                        const ip = (d.ip || '').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                        let labelLat, labelLng;
+                        const pt = map.latLngToContainerPoint([y, x]);
+                        if (n === 1) {
+                            const labelPt = L.point(pt.x, pt.y - LABEL_OFFSET_PX);
+                            const latLng = map.containerPointToLatLng(labelPt);
+                            labelLat = latLng.lat; labelLng = latLng.lng;
+                        } else {
+                            const angleDeg = 90 + (idx / n) * 360;
+                            const angleRad = angleDeg * Math.PI / 180;
+                            const labelPt = L.point(pt.x + LABEL_OFFSET_PX * 1.2 * Math.cos(angleRad), pt.y - LABEL_OFFSET_PX * 1.2 * Math.sin(angleRad));
+                            const latLng = map.containerPointToLatLng(labelPt);
+                            labelLat = latLng.lat; labelLng = latLng.lng;
+                        }
+                        const labelHtml = '<span class="device-map-label-name" style="color:#000!important;background:#fff!important;">' + name + '</span>' + (ip ? '<span class="device-map-label-ip">' + ip + '</span>' : '');
+                        const icon = L.divIcon({
+                            className: 'device-map-label',
+                            html: labelHtml,
+                            iconSize: [90, 22],
+                            iconAnchor: [45, 22]
+                        });
+                        const labelMarker = L.marker([labelLat, labelLng], { icon: icon });
+                        labelMarker.addTo(deviceLabelsLayer);
+                    });
+                });
+            }
         }
-        function togglePause(){ isPaused=!isPaused; document.getElementById('pause-btn').innerText=isPaused?"▶️ Play":"⏸️ Pause"; if(!isPaused)updateDashboard(); }
+        map.on('zoomend', function() { if (mapLabelsVisible) plotDevicesOnMap(); });
+        function togglePause(){ isPaused=!isPaused; const btn=document.getElementById('pause-btn'); if(btn) btn.innerText=isPaused?"▶":"⏸"; if(!isPaused) updateDashboard(); }
         setInterval(()=>{if(!isPaused)nextMap();},15000);
 
         // === HISTORY & ACKNOWLEDGED ISSUES ===
@@ -1356,6 +1557,8 @@
 
             const connectHref = connectionUrl ? connectionUrl.replace(/"/g,'&quot;') : '#';
             const nvrRow = (isCamera && nvrDevice) ? `<div class="dd-row"><span class="dd-label">NVR</span><span class="dd-value"><a href="#" onclick="event.preventDefault(); document.getElementById('device-detail-modal').classList.remove('active'); document.getElementById('device-detail-modal').style.display='none'; openDeviceModal('${(nvrDevice.ip||'').replace(/'/g,"\\'")}'); return false;" style="color:#4a9eff;">${String(nvrDevice.name||'NVR').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</a></span></div>` : '';
+            const canLocate = deviceIsLocatable(d);
+            const locateRow = canLocate ? `<div class="dd-row"><span class="dd-label">Map</span><span class="dd-value"><button type="button" class="control-btn" onclick="locateDeviceOnMap('${(d.ip||'').replace(/'/g,"\\'")}')">Locate</button></span></div>` : '';
             const statusSuffix = (isCamera && nvrDevice && (nvrDevice.status === 'offline' || nvrDevice.status === 'amber') && d.status === 'online') ? ' <span style="color:#888;font-weight:normal;">(NVR down — not recording)</span>' : '';
             let html = `
                 <div class="dd-row"><span class="dd-label">Status</span><span class="dd-value" style="color:${stColor}">● ${effectiveStatus.toUpperCase()}${statusSuffix}</span></div>
@@ -1363,6 +1566,7 @@
                 ${lastIssueStr ? `<div class="dd-row"><span class="dd-label">Last issue / down</span><span class="dd-value" style="color:#f8312f;">${lastIssueStr}</span></div>` : ''}
                 <div class="dd-row"><span class="dd-label">Connect</span><span class="dd-value">${connectionUrl ? `<a href="${connectHref}" target="_blank" rel="noopener" style="color:#4a9eff;">Open in new tab</a>` : '—'}</span></div>
                 ${nvrRow}
+                ${locateRow}
                 <div class="dd-section">Login page</div>
                 ${isCloudMode ? `<div style="font-size:12px; color:#888; padding:6px 0;">${String(perDeviceLogin || '—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><div style="font-size:11px; color:#666;">Edits disabled in cloud view.</div>` : `<input type="text" id="dd-login-url" placeholder="e.g. https://host/ui/#/login or leave blank to use default" value="${(perDeviceLogin || '').replace(/"/g,'&quot;')}" style="width:100%; box-sizing:border-box; background:#222; color:#eee; border:1px solid #444; padding:8px; border-radius:6px; font-size:13px; font-family:monospace;"><button class="control-btn" style="margin-top:6px;" onclick="saveDeviceLoginUrl()">Save login page</button>`}
                 <div class="dd-section">Details</div>
