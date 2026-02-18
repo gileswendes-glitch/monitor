@@ -3,7 +3,7 @@
 <head>
     <title>KHS IT Monitor</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         /* === CORE LAYOUT === */
@@ -109,7 +109,7 @@
         .weather-box.theme-matrix .weather-temp { color: #0f0; }
         
         /* === MAP & CONTROLS === */
-        #map-wrapper { flex-grow: 1; position: relative; width: 100%; height: 100%; overflow: hidden; }
+        #map-wrapper { flex-grow: 1; position: relative; width: 100%; height: 100%; min-height: 200px; overflow: hidden; }
         #map-wrapper.map-theme-default { background: #ffffff; }
         #map-wrapper.map-theme-retro { background: #0a120a; }
         #map-wrapper.map-theme-analogue { background: #1a1814; }
@@ -123,10 +123,12 @@
         #map-matrix-rain { display: none; position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
         #map-wrapper.map-theme-retro #map-matrix-rain { display: block; }
         #matrix-rain-canvas { display: block; width: 100%; height: 100%; }
-        #map-wrapper .leaflet-container { background: transparent !important; }
-        #map { height: 100%; width: 100%; position: relative; z-index: 1; background: transparent !important; }
-        #map-title { position: absolute; top: 20px; right: 20px; background: rgba(20, 20, 20, 0.85); color: #e0e0e0; padding: 8px 20px; border-radius: 6px; z-index: 1000; backdrop-filter: blur(5px); border: 1px solid #444; }
-        #map-controls { position: absolute; bottom: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+        #map-wrapper .leaflet-container, #map-wrapper #map { background: transparent !important; }
+        #map { height: 100%; width: 100%; position: relative; z-index: 1; background: transparent !important; min-height: 150px; }
+        #map-overlay { position: absolute; inset: 0; z-index: 10000; pointer-events: none; }
+        #map-overlay > * { pointer-events: auto; }
+        #map-title { position: absolute; top: 20px; right: 20px; background: rgba(20, 20, 20, 0.85); color: #e0e0e0; padding: 8px 20px; border-radius: 6px; backdrop-filter: blur(5px); border: 1px solid #444; }
+        #map-controls { position: absolute; bottom: 20px; right: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
         .map-controls-labels { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: rgba(20, 20, 20, 0.9); border: 1px solid #444; border-radius: 8px; backdrop-filter: blur(8px); font-size: 12px; color: #aaa; }
         .map-controls-labels label { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; }
         .map-controls-labels input[type="checkbox"] { cursor: pointer; accent-color: #00d26a; width: 14px; height: 14px; }
@@ -205,9 +207,11 @@
         }
 
         /* === MAP MARKER STYLES === */
+        .device-marker-wrapper.leaflet-div-icon { background: transparent !important; border: none !important; }
         .device-marker { border-radius: 50%; border: 2px solid rgba(255,255,255,0.8); box-shadow: 0 2px 8px rgba(0,0,0,0.5); cursor: pointer; transition: transform 0.2s; }
         .device-marker:hover { transform: scale(1.3); z-index: 1000 !important; }
-        .device-marker-emoji { line-height: 1; text-align: center; }
+        .device-marker-emoji { line-height: 1; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid rgba(255,255,255,0.9); box-sizing: border-box; overflow: hidden; width: 100%; height: 100%; }
+        .device-marker-emoji img.device-type-icon { flex-shrink: 0; }
         .device-marker-emoji:hover { transform: scale(1.4); }
         .device-marker-emoji.marker-online { animation: none; }
         .device-marker-emoji.marker-amber { animation: pulse-emoji-amber 2s infinite; }
@@ -254,8 +258,10 @@
 
         /* === MAP MARKER TOOLTIP (mouseover name + IP) === */
         .device-marker-tooltip { background: rgba(20, 20, 20, 0.95) !important; border: 1px solid #444 !important; border-radius: 6px !important; padding: 6px 10px !important; font-size: 12px !important; color: #e0e0e0 !important; white-space: nowrap; }
+        .device-marker-tooltip .device-marker-tooltip-content { white-space: normal; max-width: 240px; }
         .device-marker-tooltip .device-tt-name { font-weight: 600; color: #fff; }
         .device-marker-tooltip .device-tt-ip { font-family: monospace; font-size: 11px; color: #aaa; margin-top: 2px; }
+        .device-map-ghost { background: transparent !important; border: none !important; pointer-events: auto !important; }
 
         /* === RADAR PING (locate highlight) === */
         .radar-ping-wrap { position: relative; width: 80px; height: 80px; margin: -40px 0 0 -40px; pointer-events: none; }
@@ -385,6 +391,7 @@
             <div style="display:flex; align-items:center; gap:12px;">
                 <div id="conn-badge" class="badge badge-local" onclick="toggleViewMode()">LOCAL</div>
                 <span>Kingsbury IT Monitoring</span>
+                <button type="button" class="control-btn" onclick="updateDashboard(); plotDevicesOnMap();" title="Refresh map &amp; devices">🔄 Refresh</button>
             </div>
             <div id="weather-box" class="weather-box" onclick="openClockThemeModal()" title="Click to change time/date style">
                 <div class="weather-main">
@@ -408,20 +415,23 @@
                 <button class="control-btn" style="margin-top:16px; width:100%;" onclick="closeClockThemeModal()">Done</button>
             </div>
         </div>
-        <div id="map-wrapper">
+        <div id="map-wrapper" class="map-theme-default">
             <div id="map-bg"></div>
-            <div id="map-title">Loading...</div>
-            <div id="map-controls">
-                <div class="map-controls-labels">
-                    <label><input type="checkbox" id="map-labels-toggle" onchange="toggleMapLabels();"> Labels</label>
-                </div>
-                <div class="map-nav-buttons">
-                    <button type="button" class="map-nav-btn" onclick="prevMap()" title="Previous map">⏮</button>
-                    <button type="button" class="map-nav-btn pause-btn" id="pause-btn" onclick="togglePause()" title="Pause / Play">⏸</button>
-                    <button type="button" class="map-nav-btn" onclick="nextMap()" title="Next map">⏭</button>
+            <div id="map"></div>
+            <div id="map-overlay">
+                <div id="map-title">Loading...</div>
+                <div id="map-controls">
+                    <div class="map-controls-labels">
+                        <label><input type="checkbox" id="map-labels-toggle" onchange="toggleMapLabels();"> Labels</label>
+                        <label><input type="checkbox" id="map-cones-toggle" onchange="toggleMapCones();"> Coverage</label>
+                    </div>
+                    <div class="map-nav-buttons">
+                        <button type="button" class="map-nav-btn" onclick="prevMap()" title="Previous map">⏮</button>
+                        <button type="button" class="map-nav-btn pause-btn" id="pause-btn" onclick="togglePause()" title="Pause / Play">⏸</button>
+                        <button type="button" class="map-nav-btn" onclick="nextMap()" title="Next map">⏭</button>
+                    </div>
                 </div>
             </div>
-            <div id="map"></div>
             <div id="map-matrix-rain" aria-hidden="true"><canvas id="matrix-rain-canvas"></canvas></div>
         </div>
     </div>
@@ -461,7 +471,7 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script>
         // === CONFIGURATION ===
         const CLOUD_URL = 'https://khs-v4w8.onrender.com';
@@ -700,7 +710,8 @@
                     if(globalCardConfig[k]===false){ el.classList.add('gone'); if(k==='firewall') el.parentNode.style.display='none'; }
                     else{ el.classList.remove('gone'); if(k==='firewall') el.parentNode.style.display='block'; } 
                 } 
-            }); 
+            });
+            plotDevicesOnMap(); 
         }
 
         const hiddenTypes = new Set(JSON.parse(localStorage.getItem('hiddenTypes')||'[]')); 
@@ -735,7 +746,8 @@
                 el.parentNode.querySelector('.expand-btn').classList.add('force-hide'); 
             } 
             localStorage.setItem('hiddenTypes',JSON.stringify([...hiddenTypes])); 
-            updateDashboard(); 
+            updateDashboard();
+            plotDevicesOnMap();
         }
 
         function toggleExpand(t,e,b) { 
@@ -793,11 +805,16 @@
         // === MAPS ===
         let maps=[{id:'T-G.PNG',name:'T Site - Ground',active:true}]; 
         var map=L.map('map',{crs:L.CRS.Simple,minZoom:-2,zoomControl:false,attributionControl:false});
+        if (!map.getPane('labelsPane')) {
+            map.createPane('labelsPane');
+            map.getPane('labelsPane').style.zIndex = 650;
+        }
         function ensureMapBgVisible(){ var m=document.getElementById('map'); if(m){ m.style.setProperty('background','transparent','important'); } var c=document.querySelector('#map-wrapper .leaflet-container'); if(c){ c.style.setProperty('background','transparent','important'); } }
         ensureMapBgVisible();
         map.whenReady(ensureMapBgVisible);
         var devicesLayer=L.layerGroup().addTo(map); 
         var deviceLabelsLayer = L.layerGroup().addTo(map);
+        var cameraConesLayer = L.layerGroup().addTo(map);
         var locateHighlightLayer = L.layerGroup().addTo(map);
         var currentMapLayer; 
         let currentMapIndex=0, isPaused=false;
@@ -819,23 +836,38 @@
         function prevMap(){ currentMapIndex=(currentMapIndex-1+maps.length)%maps.length; loadMap(currentMapIndex); }
         function nextMap(){ currentMapIndex=(currentMapIndex+1)%maps.length; loadMap(currentMapIndex); }
         let mapLabelsVisible = false;
-        function toggleMapLabels(){ mapLabelsVisible=!!(document.getElementById('map-labels-toggle')&&document.getElementById('map-labels-toggle').checked); plotDevicesOnMap(); }
+        let mapConesVisible = false;
+        function toggleMapLabels(){ mapLabelsVisible=!!(document.getElementById('map-labels-toggle')&&document.getElementById('map-labels-toggle').checked); try{ localStorage.setItem('mapLabelsVisible', mapLabelsVisible ? 'true' : 'false'); }catch(e){} plotDevicesOnMap(); }
+        function toggleMapCones(){ mapConesVisible=!!(document.getElementById('map-cones-toggle')&&document.getElementById('map-cones-toggle').checked); try{ localStorage.setItem('mapConesVisible', mapConesVisible ? 'true' : 'false'); }catch(e){} plotDevicesOnMap(); }
         function loadMap(i){ 
+            currentMapIndex = i;
+            devicesLayer.clearLayers();
+            deviceLabelsLayer.clearLayers();
+            cameraConesLayer.clearLayers();
             const c=maps[i]; 
+            if (!c) return;
             document.getElementById('map-title').innerText=c.name; 
-            var img=new Image(); img.src=c.id; 
-            img.onload=function(){ 
-                var b=[[0,0],[this.height,this.width]]; 
+            var img=new Image();
+            function applyMap(){
+                var h = img.naturalHeight || img.height || 0, w = img.naturalWidth || img.width || 0;
+                if (h <= 0 || w <= 0) { h = 800; w = 1000; }
+                var b=[[0,0],[h,w]]; 
                 if(currentMapLayer) map.removeLayer(currentMapLayer); 
-                currentMapLayer=L.imageOverlay(c.id,b).addTo(map); 
-                map.fitBounds(b); 
+                currentMapLayer=L.imageOverlay(c.id,b).addTo(map);
+                map.invalidateSize();
+                map.fitBounds(b, { animate: false, padding: [0, 0], maxZoom: 19 });
                 ensureMapBgVisible();
                 plotDevicesOnMap();
                 if (locateDeviceAfterLoad) {
                     addRadarPing(locateDeviceAfterLoad);
                     locateDeviceAfterLoad = null;
                 }
-            } 
+                setTimeout(function(){ map.invalidateSize(); plotDevicesOnMap(); }, 50);
+            }
+            img.onload=applyMap;
+            img.onerror=function(){ applyMap(); };
+            img.src = c.id.startsWith('/') ? c.id : '/' + c.id;
+            if (img.complete && (img.naturalWidth || img.width)) applyMap();
         }
 
         function deviceIsLocatable(d) {
@@ -878,8 +910,8 @@
             isPaused = true;
             const btn = document.getElementById('pause-btn');
             if (btn) btn.innerText = '▶';
-            const fid = String(d.floor_id || '').toLowerCase();
-            const mapIdx = maps.findIndex(m => String(m.id || '').toLowerCase() === fid);
+            const fid = String(d.floor_id || '').trim().toLowerCase().replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
+            const mapIdx = maps.findIndex(m => String(m.id || '').trim().toLowerCase().replace(/\.(png|jpg|jpeg|gif|webp)$/i, '') === fid);
             if (mapIdx >= 0) {
                 if (currentMapIndex === mapIdx) {
                     addRadarPing(d);
@@ -895,11 +927,23 @@
 
         // === DEVICE MARKERS ===
         const deviceEmojis = {
-            'server': '🖥️', 'esxi': '🗄️', 'nvr': '📹', 'firewall': '🛡️', 'switch': '🔀',
-            'wap': '📡', 'printer': '🖨️', 'cctv': '📷', 'telephone': '☏', 'access_control': '🚪',
+            'server': '🖥️', 'esxi': '🗄️', 'nvr': '📹', 'firewall': '🛡️', 'switch': null,
+            'wap': null, 'printer': '🖨️', 'cctv': null, 'telephone': '☏', 'access_control': '🚪',
             'hardware': '💾', 'service': '☁️', 'cloud': '☁️', 'default': '📍'
         };
+        const deviceIconImages = { 'switch': '/images/network-switch.png', 'cctv': '/images/camera.png', 'wap': '/images/wap.png' };
         
+        function getDeviceIcon(type, size) {
+            const t = getUiType({type: type});
+            const imgSrc = deviceIconImages[t];
+            if (imgSrc) {
+                const s = (typeof size === 'number') ? size + 'px' : (size || '1.1em');
+                return `<img src="${imgSrc}" alt="" class="device-type-icon" style="width:${s};height:${s};vertical-align:middle;object-fit:contain;display:inline-block;">`;
+            }
+            const emoji = deviceEmojis[t] || deviceEmojis['default'];
+            if (typeof size === 'string' && size.endsWith('em')) return `<span style="font-size:${size};">${emoji}</span>`;
+            return emoji;
+        }
         function getDeviceEmoji(type) {
             const t = getUiType({type: type});
             return deviceEmojis[t] || deviceEmojis['default'];
@@ -977,13 +1021,15 @@
 
         // Cluster devices by map position (same or very close). Returns Map<key, { devices, cx, cy, sameType, typeName }>.
         const LABEL_GRID = 28;
-        function clusterMapDevicesByPosition(mapDevices) {
+        const OVERLAP_GRID = 5;
+        function clusterMapDevicesByPosition(mapDevices, gridSize) {
+            const grid = gridSize || LABEL_GRID;
             const keyToDevices = new Map();
             mapDevices.forEach(d => {
                 let x, y;
                 if (d.map_coordinates && typeof d.map_coordinates === 'object') { x = parseFloat(d.map_coordinates.x); y = parseFloat(d.map_coordinates.y); }
                 else { x = parseFloat(d.x); y = parseFloat(d.y); }
-                const key = `${Math.round(x / LABEL_GRID)}_${Math.round(y / LABEL_GRID)}`;
+                const key = `${Math.round(x / grid)}_${Math.round(y / grid)}`;
                 if (!keyToDevices.has(key)) keyToDevices.set(key, []);
                 keyToDevices.get(key).push({ d, x, y });
             });
@@ -1000,11 +1046,20 @@
         }
 
         function plotDevicesOnMap() {
+            mapLabelsVisible = !!(document.getElementById('map-labels-toggle') && document.getElementById('map-labels-toggle').checked);
+            mapConesVisible = !!(document.getElementById('map-cones-toggle') && document.getElementById('map-cones-toggle').checked);
             devicesLayer.clearLayers();
             deviceLabelsLayer.clearLayers();
+            cameraConesLayer.clearLayers();
             const currentMap = maps[currentMapIndex];
             if (!currentMap || !cachedDevices.length) return;
             
+            function normalizeFloorId(id) {
+                const s = String(id || '').trim().toLowerCase();
+                if (!s || s === 'nomap') return '';
+                return s.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
+            }
+            const currentMapNorm = normalizeFloorId(currentMap.id);
             const mapDevices = cachedDevices.filter(d => {
                 if (!d.floor_id || d.floor_id === 'nomap') return false;
                 const deviceType = getUiType(d);
@@ -1017,19 +1072,27 @@
                 else if (d.x !== undefined && d.y !== undefined) { x = d.x; y = d.y; }
                 
                 if (x === undefined || y === undefined || (x === 0 && y === 0)) return false;
-                const deviceFloor = String(d.floor_id).toLowerCase();
-                const currentMapId = String(currentMap.id).toLowerCase();
-                return deviceFloor === currentMapId;
+                const deviceFloorNorm = normalizeFloorId(d.floor_id);
+                if (!deviceFloorNorm) return false;
+                return deviceFloorNorm === currentMapNorm;
             });
 
             const positionClusters = clusterMapDevicesByPosition(mapDevices);
+            const overlapClusters = clusterMapDevicesByPosition(mapDevices, OVERLAP_GRID);
             const ackIps = new Set(acknowledgedIssues.map(a => (a.ip || a.deviceIp || '').trim()).filter(Boolean));
             const problemDevices = mapDevices.filter(d => (d.status === 'offline' || d.status === 'amber') && !ackIps.has((d.ip || '').trim()));
 
-            // 1. Same-type overlapping groups: highlight circle + optional group label
-            positionClusters.forEach(cluster => {
+            // 1. Same-type overlapping groups: use tight grid so only truly overlapping devices (same position) cluster. Highlight when at least one has an ongoing problem.
+            overlapClusters.forEach(cluster => {
                 if (!cluster.sameType || cluster.devices.length < 2) return;
+                const hasOngoingProblem = cluster.devices.some(w => {
+                    const d = w.d;
+                    const isProblem = d.status === 'offline' || d.status === 'amber' || (d.status === 'online' && deviceHasDriveWarning(d));
+                    return isProblem && !ackIps.has((d.ip || '').trim());
+                });
+                if (!hasOngoingProblem) return;
                 const cy = cluster.cy, cx = cluster.cx;
+                const deviceList = cluster.devices.map(w => (w.d.name || w.d.ip || 'Device').replace(/</g,'&lt;').replace(/>/g,'&gt;')).join(', ');
                 const circle = L.circleMarker([cy, cx], {
                     radius: 38,
                     color: '#4a9eff',
@@ -1038,7 +1101,24 @@
                     weight: 2,
                     dashArray: '6,4'
                 });
+                circle.bindTooltip('<div class="device-marker-tooltip-content"><strong>' + cluster.devices.length + '× ' + cluster.typeName + '</strong><br><span style="font-size:11px;color:#888;">' + deviceList + '</span><br><span style="font-size:10px;color:#ffc107;">One or more need attention</span></div>', { permanent: false, direction: 'top', className: 'device-marker-tooltip', offset: [0, -8] });
                 circle.addTo(devicesLayer);
+                cluster.devices.forEach((w, idx) => {
+                    var offset = 0;
+                    if (cluster.devices.length > 1) offset = (idx - (cluster.devices.length - 1) / 2) * 12;
+                    var ghostX = cluster.devices.length > 1 ? cx + offset : cx;
+                    var ghostY = cluster.devices.length > 1 ? cy - Math.abs(offset) * 0.5 : cy;
+                    var nm = (w.d.name || w.d.ip || '?').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                    var ghostIcon = L.divIcon({
+                        className: 'device-map-ghost',
+                        html: '<span style="font-size:10px;background:rgba(74,158,255,0.9);color:#fff;padding:2px 5px;border-radius:4px;white-space:nowrap;">' + nm + '</span>',
+                        iconSize: [50, 16],
+                        iconAnchor: [25, 16]
+                    });
+                    var ghostMarker = L.marker([ghostY, ghostX], { icon: ghostIcon, pane: 'labelsPane' });
+                    ghostMarker.bindTooltip(nm + (w.d.ip ? ' (' + w.d.ip + ')' : ''), { permanent: false, direction: 'top', className: 'device-marker-tooltip' });
+                    ghostMarker.addTo(deviceLabelsLayer);
+                });
                 if (mapLabelsVisible) {
                     const labelText = cluster.devices.length + '× ' + cluster.typeName;
                     const icon = L.divIcon({
@@ -1047,7 +1127,7 @@
                         iconSize: [50, 14],
                         iconAnchor: [25, 14]
                     });
-                    const labelMarker = L.marker([cy, cx], { icon: icon });
+                    const labelMarker = L.marker([cy - 12, cx], { icon: icon, pane: 'labelsPane' });
                     labelMarker.addTo(deviceLabelsLayer);
                 }
             });
@@ -1099,19 +1179,19 @@
                 if (isAcknowledged) statusClass = statusClass + ' marker-acknowledged';
 
                 const t = getUiType(d);
-                const emoji = getDeviceEmoji(d.type);
-                let size = 24;
-                if (['server', 'nvr', 'esxi', 'firewall'].includes(t)) size = 28;
-                if (['cctv'].includes(t)) size = 20;
+                let size = 30;
+                if (['server', 'nvr', 'esxi', 'firewall'].includes(t)) size = 34;
+                if (['cctv'].includes(t)) size = 26;
+                const iconHtml = getDeviceIcon(d.type, size);
                 
                 if (isProblem && !isAcknowledged) {
-                    const circle = L.circleMarker([y, x], { radius: 22, color: '#f8312f', fillColor: '#f8312f', fillOpacity: 0.2, weight: 2, dashArray: '4,4' });
+                    const circle = L.circleMarker([y, x], { radius: 26, color: '#f8312f', fillColor: '#f8312f', fillOpacity: 0.2, weight: 2, dashArray: '4,4' });
                     circle.addTo(devicesLayer);
                 }
 
                 const icon = L.divIcon({
                     className: 'device-marker-wrapper',
-                    html: `<div class="device-marker-emoji ${statusClass}" style="font-size: ${size}px; text-shadow: 0 0 8px ${statusColor}, 0 0 12px ${statusColor}; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); cursor: pointer; transition: transform 0.2s;">${emoji}</div>`,
+                    html: `<div class="device-marker-emoji ${statusClass}" style="font-size: ${size}px; text-shadow: 0 0 8px ${statusColor}, 0 0 12px ${statusColor}; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); cursor: pointer; transition: transform 0.2s;">${iconHtml}</div>`,
                     iconSize: [size, size], iconAnchor: [size/2, size/2]
                 });
                 
@@ -1121,6 +1201,57 @@
                 marker.bindTooltip(tooltipHtml, { permanent: false, direction: 'top', className: 'device-marker-tooltip', offset: [0, -12] });
                 marker.addTo(devicesLayer);
             });
+
+            // 3b. Camera coverage cones (when toggle on)
+            if (mapConesVisible) {
+                try {
+                    var b = map.getBounds();
+                    if (b && b.getNorthEast && b.getSouthWest) {
+                        var mapH = b.getNorthEast().lat - b.getSouthWest().lat;
+                        var mapW = b.getNorthEast().lng - b.getSouthWest().lng;
+                        var coneDist = Math.min(mapH, mapW) * 0.08;
+                        if (coneDist > 0) {
+                            mapDevices.forEach(d => {
+                                var mc = d.map_coordinates;
+                                if (!mc || mc.x == null || mc.y == null) return;
+                                var x = parseFloat(mc.x); var y = parseFloat(mc.y);
+                                if (isNaN(x) || isNaN(y)) return;
+                                var t = getUiType(d);
+                                if (t === 'cctv') {
+                                    if (mc.camera_rotation == null || mc.camera_angle == null) return;
+                                    var rot = Number(mc.camera_rotation) * Math.PI / 180;
+                                    var half = (Number(mc.camera_angle) || 60) * 0.5 * Math.PI / 180;
+                                    var dist = (mc.camera_range != null && !isNaN(Number(mc.camera_range))) ? Number(mc.camera_range) : coneDist;
+                                    var pts = [[y, x]];
+                                    for (var seg = 0; seg <= 20; seg++) {
+                                        var ang = rot - half + (2 * half * seg / 20);
+                                        pts.push([y - dist * Math.sin(ang), x + dist * Math.cos(ang)]);
+                                    }
+                                    var poly = L.polygon(pts, {
+                                        color: d.status === 'online' ? 'rgba(0,210,106,0.5)' : d.status === 'amber' ? 'rgba(255,193,7,0.5)' : 'rgba(248,49,47,0.5)',
+                                        fillColor: d.status === 'online' ? '#00d26a' : d.status === 'amber' ? '#ffc107' : '#f8312f',
+                                        fillOpacity: 0.25, weight: 2
+                                    });
+                                    poly.on('click', function() { openDeviceModal(d.ip); });
+                                    poly.bindTooltip((d.name || d.ip || 'Camera').replace(/</g,'&lt;') + ' (' + (mc.camera_rotation||0) + '° / ' + (mc.camera_angle||60) + '°)', { permanent: false, direction: 'top', className: 'device-marker-tooltip' });
+                                    poly.addTo(cameraConesLayer);
+                                } else if (t === 'wap' || t === 'wifi' || t === 'ap') {
+                                    var markerSize = 30;
+                                    var circleRadius = Math.round(markerSize * 2.5);
+                                    var circle = L.circleMarker([y, x], {
+                                        radius: circleRadius,
+                                        interactive: false,
+                                        color: d.status === 'online' ? 'rgba(0,210,106,0.5)' : d.status === 'amber' ? 'rgba(255,193,7,0.5)' : 'rgba(248,49,47,0.5)',
+                                        fillColor: d.status === 'online' ? '#00d26a' : d.status === 'amber' ? '#ffc107' : '#f8312f',
+                                        fillOpacity: 0.2, weight: 2
+                                    });
+                                    circle.addTo(cameraConesLayer);
+                                }
+                            });
+                        }
+                    }
+                } catch (e) { /* cones optional */ }
+            }
 
             // 4. Device name labels: black text on white, fixed pixel offset from marker (tracks close when zooming), centred text.
             if (mapLabelsVisible) {
@@ -1162,13 +1293,13 @@
                             iconSize: [90, 22],
                             iconAnchor: [45, 22]
                         });
-                        const labelMarker = L.marker([labelLat, labelLng], { icon: icon });
+                        const labelMarker = L.marker([labelLat, labelLng], { icon: icon, pane: 'labelsPane' });
                         labelMarker.addTo(deviceLabelsLayer);
                     });
                 });
             }
         }
-        map.on('zoomend', function() { if (mapLabelsVisible) plotDevicesOnMap(); });
+        map.on('zoomend', function() { if (mapLabelsVisible || mapConesVisible) plotDevicesOnMap(); });
         function togglePause(){ isPaused=!isPaused; const btn=document.getElementById('pause-btn'); if(btn) btn.innerText=isPaused?"▶":"⏸"; if(!isPaused) updateDashboard(); }
         setInterval(()=>{if(!isPaused)nextMap();},15000);
 
@@ -1364,10 +1495,46 @@
             updateHistoryAckSelectedBtn();
         }
 
-        // === CAMERA → NVR LINKING (by name: NVR1 ↔ cameras starting with 1, etc.) ===
+        // === SINGLE SOURCE OF TRUTH: device status (DB + drive/toner overrides) ===
+        function getEffectiveStatus(d) {
+            if (!d) return 'offline';
+            let st = (d.status === 'online' ? 'online' : (d.status === 'amber' ? 'amber' : 'offline'));
+            const t = getUiType(d);
+            const det = safeParseDetails(d.details);
+            const ackIps = new Set((acknowledgedIssues || []).map(a => (a.ip || a.deviceIp || '').trim()).filter(Boolean));
+            if (t === 'nvr' || t === 'hardware') {
+                const note = (det && det.note) ? String(det.note) : '';
+                const hasError = /Disk\s*\d+\s*(FAIL|Offline)/i.test(note);
+                let totalDrives = parseInt(det.diskCount, 10) || 0;
+                if (totalDrives <= 0) {
+                    const dm = note.match(/(\d+)\s*Drives?/i) || note.match(/Cap:\s*[\d.]+\s*TB\s*\|\s*(\d+)/i);
+                    if (dm) totalDrives = parseInt(dm[1], 10) || 0;
+                }
+                const diskNums = (note.match(/Disk\s*(\d+)/gi) || []).map(m => parseInt((m.match(/\d+/) || [0])[0], 10)).filter(n => n > 0);
+                if (totalDrives <= 0 && diskNums.length > 0) totalDrives = Math.max(...diskNums);
+                totalDrives = Math.max(totalDrives, 1);
+                const statusByDrive = parseDriveStatusByNumber(note, totalDrives);
+                const hasWarning = Object.values(statusByDrive).some(v => v === 'warning') || /drive\(s\)\s*missing|missing\s*drive/i.test(note);
+                if (!ackIps.has((d.ip || '').trim())) { if (hasError) st = 'offline'; else if (hasWarning) st = 'amber'; }
+            }
+            if (st === 'online' && deviceHasDriveWarning(d)) st = 'amber';
+            return st;
+        }
+
+        // === CAMERA → NVR LINKING (by number: Camera 1 ↔ NVR 1; Camera 10 ↔ NVR 10 when exact; else digit fallback) ===
+        function getLeadingNumberFromName(name) {
+            if (!name || typeof name !== 'string') return null;
+            const m = String(name).trim().match(/^[^0-9]*([1-9]\d*)/);
+            return m ? parseInt(m[1], 10) : null;
+        }
         function getLeadingDigitFromName(name) {
             if (!name || typeof name !== 'string') return null;
             const m = String(name).trim().match(/^[^0-9]*([1-9])/);
+            return m ? parseInt(m[1], 10) : null;
+        }
+        function getNvrNumberFromName(name) {
+            if (!name || typeof name !== 'string') return null;
+            const m = String(name).trim().match(/nvr\s*[-]?\s*(\d+)/i);
             return m ? parseInt(m[1], 10) : null;
         }
         function getNvrDigitFromName(name) {
@@ -1376,13 +1543,53 @@
             return m ? parseInt(m[1], 10) : null;
         }
         function findNvrForCamera(cameraName) {
+            if (!cachedDevices.length) return null;
+            const nvrList = cachedDevices.filter(d => getUiType(d) === 'nvr');
+            if (nvrList.length === 0) return null;
+            const num = getLeadingNumberFromName(cameraName);
             const digit = getLeadingDigitFromName(cameraName);
-            if (digit == null || !cachedDevices.length) return null;
-            return cachedDevices.find(d => {
-                if (getUiType(d) !== 'nvr') return false;
+            const match = nvrList.find(d => {
+                const nvrNum = getNvrNumberFromName(d.name);
                 const nvrDigit = getNvrDigitFromName(d.name);
-                return nvrDigit != null && nvrDigit === digit;
-            }) || null;
+                if (num != null && nvrNum != null && nvrNum === num) return true;
+                if (digit != null && nvrDigit != null && nvrDigit === digit) return true;
+                if (digit != null && nvrNum != null && nvrNum === digit) return true;
+                return false;
+            });
+            if (match) return match;
+            if (nvrList.length === 1) return nvrList[0];
+            return null;
+        }
+        function getCamerasOnNvr(nvrDevice) {
+            if (!nvrDevice || !cachedDevices.length) return [];
+            const nvrNum = getNvrNumberFromName(nvrDevice.name);
+            const nvrDigit = getNvrDigitFromName(nvrDevice.name);
+            if (nvrNum == null && nvrDigit == null) return [];
+            return cachedDevices.filter(d => {
+                if (getUiType(d) !== 'cctv') return false;
+                const camNum = getLeadingNumberFromName(d.name);
+                const camDigit = getLeadingDigitFromName(d.name);
+                if (nvrNum != null && camNum != null && camNum === nvrNum) return true;
+                if (nvrDigit != null && camDigit != null && camDigit === nvrDigit) return true;
+                if (nvrNum != null && camDigit != null && camDigit === nvrNum) return true;
+                return false;
+            });
+        }
+        function exportNvrCamerasCsv(nvrName, cameras) {
+            if (!cameras || cameras.length === 0) return;
+            const header = 'Name,IP,Status,Last Seen\n';
+            const rows = cameras.map(c => {
+                const n = (c.name || '').replace(/"/g, '""');
+                const i = (c.ip || '').replace(/"/g, '""');
+                const s = (c.status || '').replace(/"/g, '""');
+                const t = c.updatedAt ? new Date(c.updatedAt).toLocaleString() : '';
+                return `"${n}","${i}","${s}","${t}"`;
+            }).join('\n');
+            const csv = '\uFEFF' + header + rows;
+            const link = document.createElement('a');
+            link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+            link.download = (nvrName || 'NVR').replace(/[^a-zA-Z0-9-_]/g, '_') + '_cameras_' + new Date().toISOString().slice(0,10) + '.csv';
+            link.click();
         }
 
         // === MODALS ===
@@ -1529,7 +1736,8 @@
             pop.style.display = 'flex'; // Ensure visible first
             setTimeout(()=> pop.classList.add('active'), 10); // Then fade in
 
-            document.getElementById('dd-name').innerText = d.name;
+            const icon = getDeviceIcon(d.type, '1.1em');
+            document.getElementById('dd-name').innerHTML = (icon ? icon + ' ' : '') + (d.name || 'Device').replace(/</g,'&lt;').replace(/>/g,'&gt;');
             document.getElementById('dd-sub').innerText = `${(d.type||'DEVICE').toUpperCase()} • ${d.ip||'No IP'}`;
 
             const cont = document.getElementById('dd-content');
@@ -1542,11 +1750,14 @@
             const uiType = getUiType(d);
             const isCamera = uiType === 'cctv' || (d.type && (d.type.toLowerCase() === 'cctv' || d.type.toLowerCase() === 'camera'));
             const nvrDevice = isCamera ? findNvrForCamera(d.name) : null;
-            // If camera is online but its linked NVR is down, show as amber (can't record)
-            if (isCamera && nvrDevice && (nvrDevice.status === 'offline' || nvrDevice.status === 'amber') && effectiveStatus === 'online') effectiveStatus = 'amber';
+            const nvrEffectiveStatus = nvrDevice ? getEffectiveStatus(nvrDevice) : 'online';
+            // If camera is online but its linked NVR is offline, show as amber (can't record). Amber NVR = attention needed but still recording.
+            if (isCamera && nvrDevice && nvrEffectiveStatus === 'offline' && effectiveStatus === 'online') effectiveStatus = 'amber';
             let stColor = effectiveStatus === 'online' ? '#00d26a' : (effectiveStatus === 'amber' ? '#ffc107' : '#f8312f');
-            const lastSeenStr = d.updatedAt ? new Date(d.updatedAt).toLocaleString() : '—';
-            const lastIssueStr = (d.last_issue || d.last_seen) ? new Date(d.last_issue || d.last_seen).toLocaleString() : null;
+            const lastOnlineStr = d.status === 'online' && d.last_seen
+                ? new Date(d.last_seen).toLocaleString()
+                : (d.lastOnlineAt ? new Date(d.lastOnlineAt).toLocaleString() : '—');
+            const lastIssueStr = d.last_issue ? new Date(d.last_issue).toLocaleString() : null;
             const isFirewall = uiType === 'firewall';
             let displayDet = isCamera ? getCameraDisplayDetails(det) : (isFirewall ? (() => { const o = { ...det }; delete o.Up; if (o.uptime === '0d') delete o.uptime; return o; })() : det);
             if (isCamera && d.status === 'offline') displayDet = { ...displayDet, note: 'Offline' };
@@ -1559,14 +1770,29 @@
             const nvrRow = (isCamera && nvrDevice) ? `<div class="dd-row"><span class="dd-label">NVR</span><span class="dd-value"><a href="#" onclick="event.preventDefault(); document.getElementById('device-detail-modal').classList.remove('active'); document.getElementById('device-detail-modal').style.display='none'; openDeviceModal('${(nvrDevice.ip||'').replace(/'/g,"\\'")}'); return false;" style="color:#4a9eff;">${String(nvrDevice.name||'NVR').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</a></span></div>` : '';
             const canLocate = deviceIsLocatable(d);
             const locateRow = canLocate ? `<div class="dd-row"><span class="dd-label">Map</span><span class="dd-value"><button type="button" class="control-btn" onclick="locateDeviceOnMap('${(d.ip||'').replace(/'/g,"\\'")}')">Locate</button></span></div>` : '';
-            const statusSuffix = (isCamera && nvrDevice && (nvrDevice.status === 'offline' || nvrDevice.status === 'amber') && d.status === 'online') ? ' <span style="color:#888;font-weight:normal;">(NVR down — not recording)</span>' : '';
+            const statusSuffix = (isCamera && nvrDevice && nvrEffectiveStatus === 'offline' && d.status === 'online') ? ' <span style="color:#888;font-weight:normal;">(NVR offline — not recording)</span>' : '';
+            const isNvr = uiType === 'nvr';
+            const nvrCameras = isNvr ? getCamerasOnNvr(d) : [];
+            const nvrCamerasSection = isNvr ? (() => {
+                const camRows = nvrCameras.map(cam => {
+                    const camNvr = findNvrForCamera(cam.name);
+                    const camNvrSt = camNvr ? getEffectiveStatus(camNvr) : 'online';
+                    const camSt = (cam.status === 'online') ? (camNvrSt === 'offline' ? 'amber' : 'online') : cam.status;
+                    const stCol = camSt === 'online' ? '#00d26a' : (camSt === 'amber' ? '#ffc107' : '#f8312f');
+                    const ipEsc = (cam.ip || '').replace(/'/g, "\\'");
+                    return `<div class="dd-row" style="align-items:center;"><span class="dd-value" style="flex:1;"><a href="#" onclick="event.preventDefault(); document.getElementById('device-detail-modal').classList.remove('active'); document.getElementById('device-detail-modal').style.display='none'; openDeviceModal('${ipEsc}'); return false;" style="color:#4a9eff;">${String(cam.name || cam.ip || '—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</a></span><span style="color:${stCol};font-size:12px;">● ${(camSt || 'unknown').toUpperCase()}</span></div>`;
+                }).join('');
+                const exportBtn = nvrCameras.length > 0 ? `<button type="button" class="control-btn" style="margin-top:8px;" onclick="(function(){ var n=cachedDevices.find(function(x){ return (x.ip||'')==='${(d.ip||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}'; }); if(n) exportNvrCamerasCsv(n.name, getCamerasOnNvr(n)); })();">Export CSV</button>` : '';
+                return `<div class="dd-section">Cameras on this NVR</div>${nvrCameras.length ? `<div style="max-height:180px;overflow:auto;">${camRows}</div>${exportBtn}` : '<div style="color:#888;font-size:13px;">No cameras linked by name.</div>'}`;
+            })() : '';
             let html = `
                 <div class="dd-row"><span class="dd-label">Status</span><span class="dd-value" style="color:${stColor}">● ${effectiveStatus.toUpperCase()}${statusSuffix}</span></div>
-                <div class="dd-row"><span class="dd-label">Last Seen</span><span class="dd-value">${lastSeenStr}</span></div>
-                ${lastIssueStr ? `<div class="dd-row"><span class="dd-label">Last issue / down</span><span class="dd-value" style="color:#f8312f;">${lastIssueStr}</span></div>` : ''}
+                <div class="dd-row"><span class="dd-label">Last online</span><span class="dd-value">${lastOnlineStr}</span></div>
+                ${lastIssueStr ? `<div class="dd-row"><span class="dd-label">Last issue reported</span><span class="dd-value" style="color:#f8312f;">${lastIssueStr}</span></div>` : ''}
                 <div class="dd-row"><span class="dd-label">Connect</span><span class="dd-value">${connectionUrl ? `<a href="${connectHref}" target="_blank" rel="noopener" style="color:#4a9eff;">Open in new tab</a>` : '—'}</span></div>
                 ${nvrRow}
                 ${locateRow}
+                ${nvrCamerasSection}
                 <div class="dd-section">Login page</div>
                 ${isCloudMode ? `<div style="font-size:12px; color:#888; padding:6px 0;">${String(perDeviceLogin || '—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div><div style="font-size:11px; color:#666;">Edits disabled in cloud view.</div>` : `<input type="text" id="dd-login-url" placeholder="e.g. https://host/ui/#/login or leave blank to use default" value="${(perDeviceLogin || '').replace(/"/g,'&quot;')}" style="width:100%; box-sizing:border-box; background:#222; color:#eee; border:1px solid #444; padding:8px; border-radius:6px; font-size:13px; font-family:monospace;"><button class="control-btn" style="margin-top:6px;" onclick="saveDeviceLoginUrl()">Save login page</button>`}
                 <div class="dd-section">Details</div>
@@ -1574,13 +1800,35 @@
 
             const sysNameVal = displayDet.sysName ? String(displayDet.sysName).trim() : '';
             if(shouldShowLabel(uiType,'sysName')&&sysNameVal&&sysNameVal.toLowerCase()!=='unknown') html += `<div class="dd-row"><span class="dd-label">System Name</span><span class="dd-value">${displayDet.sysName}</span></div>`;
+
+            // Show Switch + MAC first in Details (directly under NVR section). Only from linked switch in system.
+            const isMacNetworkDevice = (uiType === 'cctv' || uiType === 'wap' || uiType === 'access_control');
+            const macVal = det.mac || displayDet.mac;
+            if (isMacNetworkDevice) {
+                const linkedSwitchIp = det.linkedSwitchIp || det.switchIp || det.switch_ip || '';
+                const swPort = det.switchPort || det.switch_port || '';
+                const switchDevice = linkedSwitchIp ? cachedDevices.find(dev => (dev.ip || '').trim() === linkedSwitchIp.trim()) : null;
+                if (switchDevice) {
+                    const swIpDisplay = (switchDevice.ip || linkedSwitchIp || '').trim();
+                    const swName = (switchDevice.name || switchDevice.ip || 'Switch').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                    const swStatus = switchDevice.status || 'unknown';
+                    const swStCol = swStatus === 'online' ? '#00d26a' : (swStatus === 'amber' ? '#ffc107' : '#f8312f');
+                    const swConnectUrl = buildConnectionUrl(switchDevice, template, cachedDeviceLoginUrls[switchDevice.ip]);
+                    const swConnectHref = swConnectUrl ? swConnectUrl.replace(/"/g,'&quot;') : '#';
+                    const portText = swPort ? ` — Port ${String(swPort).replace(/&/g,'&amp;')}` : '';
+                    html += `<div class="dd-row"><span class="dd-label">Switch</span><span class="dd-value"><a href="${swConnectHref}" target="_blank" rel="noopener" style="color:#4a9eff;">${swName}</a> <span style="color:#888;font-family:monospace;font-size:12px;">${swIpDisplay}</span> <span style="color:${swStCol};font-size:12px;">● ${swStatus.toUpperCase()}</span>${portText}</span></div>`;
+                } else if (linkedSwitchIp) {
+                    html += `<div class="dd-row"><span class="dd-label">Switch</span><span class="dd-value" style="color:#888;">${String(linkedSwitchIp).replace(/&/g,'&amp;')} <span style="color:#666;font-size:11px;">(not in system)</span></span></div>`;
+                }
+            }
+            if(shouldShowLabel(uiType,'mac')&&macVal) html += `<div class="dd-row"><span class="dd-label">MAC Address</span><span class="dd-value">${macVal}</span></div>`;
+
             const showUptime = displayDet.uptime && (uiType !== 'firewall' || displayDet.uptime !== '0d');
             if(shouldShowLabel(uiType,'uptime')&&showUptime) html += `<div class="dd-row"><span class="dd-label">Uptime</span><span class="dd-value">${displayDet.uptime}</span></div>`;
             if(shouldShowLabel(uiType,'model')&&displayDet.model) html += `<div class="dd-row"><span class="dd-label">Model</span><span class="dd-value">${displayDet.model}</span></div>`;
             if(shouldShowLabel(uiType,'Model')&&displayDet.Model) html += `<div class="dd-row"><span class="dd-label">Model</span><span class="dd-value">${displayDet.Model}</span></div>`;
             if(shouldShowLabel(uiType,'serial')&&displayDet.serial) html += `<div class="dd-row"><span class="dd-label">Serial</span><span class="dd-value">${displayDet.serial}</span></div>`;
-            if(shouldShowLabel(uiType,'mac')&&displayDet.mac) html += `<div class="dd-row"><span class="dd-label">MAC Address</span><span class="dd-value">${displayDet.mac}</span></div>`;
-            if (isCamera && (displayDet.cpu > 0 || displayDet.ram > 0 || displayDet.disk > 0)) {
+            if (isCamera && d.status === 'online' && (displayDet.cpu > 0 || displayDet.ram > 0 || displayDet.disk > 0)) {
                 if(shouldShowLabel(uiType,'cpu')&&displayDet.cpu > 0) html += `<div class="dd-row"><span class="dd-label">CPU</span><span class="dd-value">${displayDet.cpu}%</span></div>`;
                 if(shouldShowLabel(uiType,'ram')&&displayDet.ram > 0) html += `<div class="dd-row"><span class="dd-label">RAM</span><span class="dd-value">${displayDet.ram}%</span></div>`;
                 if(shouldShowLabel(uiType,'disk')&&displayDet.disk > 0) html += `<div class="dd-row"><span class="dd-label">Disk</span><span class="dd-value">${displayDet.disk}%</span></div>`;
@@ -1818,18 +2066,19 @@
             m.forEach((d,i)=>{ 
                 const tr=document.createElement('tr'); 
                 let displayStatus = d.status;
-                // If camera's linked NVR is down, show camera as having an issue (can't record)
+                // If camera's linked NVR is offline, show camera as having an issue (can't record). Amber NVR = still recording.
                 const isCameraRow = getUiType(d)==='cctv';
                 if (isCameraRow) {
                     const linkedNvr = findNvrForCamera(d.name);
-                    if (linkedNvr && (linkedNvr.status === 'offline' || linkedNvr.status === 'amber') && displayStatus === 'online') displayStatus = 'amber';
+                    const linkedNvrSt = linkedNvr ? getEffectiveStatus(linkedNvr) : 'online';
+                    if (linkedNvr && linkedNvrSt === 'offline' && displayStatus === 'online') displayStatus = 'amber';
                 }
                 let c=displayStatus==='online'?'#00d26a':(displayStatus==='amber'?'#ffc107':'#f8312f'); 
                 const det=safeParseDetails(d.details);
                 const isPrinterRow = getUiType(d)==='printer';
                 const displayDet = isCameraRow ? getCameraDisplayDetails(det) : det;
                 let dh=""; 
-                if (isCameraRow && displayStatus === 'amber' && d.status === 'online') dh+=`<span style="color:#ffc107;">NVR down — not recording</span><br>`;
+                if (isCameraRow && displayStatus === 'amber' && d.status === 'online') dh+=`<span style="color:#ffc107;">NVR offline — not recording</span><br>`;
                 const sysNameStr = displayDet.sysName ? String(displayDet.sysName).trim() : '';
                 if(sysNameStr&&sysNameStr!==d.name&&sysNameStr.toLowerCase()!=='unknown') dh+=`<span style="color:#fff;">${displayDet.sysName}</span><br>`; 
                 if(displayDet.note) dh+=`<span style="color:#aaa;">${formatNoteForDisplay(displayDet.note)}</span><br>`; 
@@ -1871,7 +2120,7 @@
             if(det.note) p.push(formatNoteForDisplay(det.note)); 
             if(det.uptime) p.push(det.uptime); 
             Object.keys(det).forEach(k=>{ 
-                if(getUiType(d) !== 'wap' && ['cpu','ram','disk','mem','hdd'].some(t=>k.toLowerCase().includes(t))) {
+                if(d.status === 'online' && getUiType(d) !== 'wap' && ['cpu','ram','disk','mem','hdd'].some(t=>k.toLowerCase().includes(t))) {
                     const v = det[k];
                     if(v!=null&&v!==''&&Number(v)!==0) p.push(`${k}: ${det[k]}`);
                 }
@@ -1897,6 +2146,7 @@ function formatCctvNote(note) {
     }).join('');
 }
 
+// POLL: every 5s. Single source: cachedDevices from /api/devices (agent updates DB via /api/update-status)
 async function updateDashboard(){ 
     try{ 
         const base = isCloudMode ? CLOUD_URL : '';
@@ -1912,7 +2162,7 @@ async function updateDashboard(){
         } 
         cachedDevices=await r.json();
         await Promise.all([loadAcknowledgedIssues(), loadMonitorSettings(), loadDeviceNotes(), loadDeviceLoginUrls()]);
-        const sig = cachedDevices.length + '|' + cachedDevices.map(d=> (d.ip||'') + ':' + (d.status||'') + ':' + (d.updatedAt||'') + ':' + (d.details&&d.details.note ? String(d.details.note).slice(0,80) : '')).join(';');
+        const sig = cachedDevices.length + '|' + cachedDevices.map(d=> (d.ip||'') + ':' + (d.status||'') + ':' + (d.updatedAt||'') + ':' + ((d.floor_id||'')+'-'+JSON.stringify(d.map_coordinates||{})) + ':' + (d.details&&d.details.note ? String(d.details.note).slice(0,80) : '') + ':' + ((d.details&&d.details.linkedSwitchIp)||'')).join(';');
         if (sig === lastDevicesSig) return;
         lastDevicesSig = sig;
         pollCount++; if (pollCount % 3 === 0) loadHistoryPanel();
@@ -1957,7 +2207,7 @@ async function updateDashboard(){
                 const fwUptime = (det.uptime && det.uptime !== '0d') ? det.uptime : null;
                 let cpu = parseInt(det.cpu || det.CPU || 0, 10), ram = parseInt(det.ram || det.RAM || 0, 10);
                 let fwStats = '';
-                if (cpu > 0 || ram > 0) {
+                if (d.status === 'online' && (cpu > 0 || ram > 0)) {
                     fwStats = `<div class="stat-container">${cpu > 0 ? `<div class="stat-row"><span class="stat-label">CPU</span><div class="stat-track"><div class="stat-fill fill-cpu" style="width:${cpu}%"></div></div></div>` : ''}${ram > 0 ? `<div class="stat-row"><span class="stat-label">RAM</span><div class="stat-track"><div class="stat-fill fill-ram" style="width:${ram}%"></div></div></div>` : ''}</div>`;
                 }
                 const fwName = (det.sysName&&String(det.sysName).trim().toLowerCase()!=='unknown') ? det.sysName : d.name;
@@ -2011,7 +2261,7 @@ async function updateDashboard(){
             // --- SERVERS ---
             else if(t==='server' || t==='esxi'){ 
                 let cpu=parseInt(det.cpu||det.CPU||0), ram=parseInt(det.ram||det.RAM||0), disk=parseInt(det.disk||det.DISK||0); let sh=''; 
-                if(cpu>0||ram>0){ sh=`<div class="stat-container"><div class="stat-row"><span class="stat-label">CPU</span><div class="stat-track"><div class="stat-fill fill-cpu" style="width:${cpu}%"></div></div></div>${ram>0?`<div class="stat-row"><span class="stat-label">RAM</span><div class="stat-track"><div class="stat-fill fill-ram" style="width:${ram}%"></div></div></div>`:''}${disk>0?`<div class="stat-row"><span class="stat-label">HDD</span><div class="stat-track"><div class="stat-fill fill-disk" style="width:${disk}%"></div></div></div>`:''}</div>`; } else if (det.note) { sh=`<div class="service-sub" style="margin-top:5px;color:#888;">${formatNoteForDisplay(det.note)}</div>`; }
+                if(d.status === 'online' && (cpu>0||ram>0)){ sh=`<div class="stat-container"><div class="stat-row"><span class="stat-label">CPU</span><div class="stat-track"><div class="stat-fill fill-cpu" style="width:${cpu}%"></div></div></div>${ram>0?`<div class="stat-row"><span class="stat-label">RAM</span><div class="stat-track"><div class="stat-fill fill-ram" style="width:${ram}%"></div></div></div>`:''}${disk>0?`<div class="stat-row"><span class="stat-label">HDD</span><div class="stat-track"><div class="stat-fill fill-disk" style="width:${disk}%"></div></div></div>`:''}</div>`; } else if (det.note) { sh=`<div class="service-sub" style="margin-top:5px;color:#888;">${formatNoteForDisplay(det.note)}</div>`; }
                 let ih=`<div class="service-item" onclick="openDeviceModal('${d.ip}')" style="flex-direction:column;align-items:stretch;padding:10px 0;"><div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-weight:600;">${d.name}</span><div class="status-dot ${st}"></div></div>${sh}</div>`; 
                 if(t==='esxi'){ h.esxi+=ih; c.esxi++; } else{ h.server+=ih; c.server++; } 
             }
@@ -2045,12 +2295,13 @@ async function updateDashboard(){
                     pills = `<span style="color:#444; font-style: italic; font-size: 0.8em;">No Info</span>`;
                 }
 
-                // If this camera's linked NVR is down, show camera as having an issue (can't record)
+                // If this camera's linked NVR is offline, show camera as having an issue (can't record). Amber NVR = still recording.
                 const linkedNvr = findNvrForCamera(d.name);
-                if (linkedNvr && (linkedNvr.status === 'offline' || linkedNvr.status === 'amber') && st === 'online') st = 'amber';
+                const linkedNvrSt = linkedNvr ? getEffectiveStatus(linkedNvr) : 'online';
+                if (linkedNvr && linkedNvrSt === 'offline' && st === 'online') st = 'amber';
 
                 const hikCpu = parseInt(det.cpu, 10) || 0, hikRam = parseInt(det.ram, 10) || 0, hikDisk = parseInt(det.disk, 10) || 0;
-                const hikStats = [hikCpu > 0 ? 'CPU ' + hikCpu + '%' : '', hikRam > 0 ? 'RAM ' + hikRam + '%' : '', hikDisk > 0 ? 'Disk ' + hikDisk + '%' : ''].filter(Boolean).join(' · ');
+                const hikStats = (d.status === 'online') ? [hikCpu > 0 ? 'CPU ' + hikCpu + '%' : '', hikRam > 0 ? 'RAM ' + hikRam + '%' : '', hikDisk > 0 ? 'Disk ' + hikDisk + '%' : ''].filter(Boolean).join(' · ') : '';
                 const hikStatsLine = hikStats ? `<div class="service-sub" style="margin-top:4px;color:#888;font-size:11px;">${hikStats}</div>` : '';
 
                 h.cctv += `<div class="service-item" onclick="openDeviceModal('${d.ip}')" style="flex-direction:column;align-items:stretch;padding:10px 0;">
@@ -2074,15 +2325,38 @@ async function updateDashboard(){
         Object.keys(mi).forEach(k=>{ const el=document.getElementById(mi[k]); if(el) el.innerHTML = h[k] || '<div class="service-item" style="color:#555;">No devices</div>'; const ce=document.getElementById(`c-${k}`); if(ce) ce.innerText=`(${c[k]})`; }); 
         document.getElementById('firewall-content').innerHTML = h.firewall || '<div style="text-align:center;color:#666;">No Firewall Found</div>';
         plotDevicesOnMap();
+        // Refresh device detail popup if open so camera/NVR status updates when NVR comes back online
+        const ddModal = document.getElementById('device-detail-modal');
+        if (currentDeviceIpForNote && ddModal && ddModal.style.display !== 'none') {
+            openDeviceModal(currentDeviceIpForNote);
+        }
     }catch(e){ console.error(e); } 
 }
 
         // === INITIALIZATION ===
         window.addEventListener('DOMContentLoaded',()=>{ 
+            try {
+                const chk = document.getElementById('map-labels-toggle');
+                if (chk) { const saved = localStorage.getItem('mapLabelsVisible'); if (saved !== null) { chk.checked = (saved === 'true'); mapLabelsVisible = chk.checked; } }
+                const coneChk = document.getElementById('map-cones-toggle');
+                if (coneChk) { const coneSaved = localStorage.getItem('mapConesVisible'); if (coneSaved !== null) { coneChk.checked = (coneSaved === 'true'); mapConesVisible = coneChk.checked; } }
+            } catch(e) {}
             Object.entries({'nvr':'nvr-list','cctv':'cctv-list','printer':'printer-window','switch':'switch-window','wap':'wap-list','telephone':'tel-list','access_control':'access-list','hardware':'hardware-list','server':'server-window','service':'cloud-window','esxi':'esxi-list'}).forEach(([t,id])=>{ 
                 const el=document.getElementById(id); if(!el) return; if(hiddenTypes.has(t)){ el.classList.add('minimized'); el.previousElementSibling.querySelector('.toggle-btn')?.classList.add('hidden-active'); } if(expandedTypes.has(t)){ el.classList.add('expanded'); el.previousElementSibling.querySelector('.expand-btn')?.classList.add('expanded-active'); } 
             }); 
             startInternalScroll(); loadMapConfig(); loadGlobalConfig(); updateDashboard(); setInterval(updateDashboard,5000); 
+            try { const bc = new BroadcastChannel('school-monitor'); bc.onmessage = (e) => { if (e.data && e.data.type === 'devices-updated') updateDashboard(); }; } catch (e) {}
+            setInterval(function() {
+                var dd = document.getElementById('device-detail-modal');
+                var mo = document.getElementById('modal-overlay');
+                var hm = document.getElementById('history-modal');
+                var cm = document.getElementById('clock-theme-modal');
+                var modalOpen = (dd && dd.classList.contains('active')) || (mo && mo.classList.contains('active')) || (hm && hm.classList.contains('active') && hm.style.display !== 'none') || (cm && cm.classList.contains('active'));
+                if (!modalOpen) location.reload();
+            }, 10 * 60 * 1000);
+        });
+        window.addEventListener('load', function(){
+            try { map.invalidateSize(); plotDevicesOnMap(); } catch(e){}
         });
     </script>
 </body>
