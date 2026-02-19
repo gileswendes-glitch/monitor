@@ -752,6 +752,20 @@ app.post('/api/add-device', async (req, res) => {
         if (conflict) return res.status(409).json({ error: 'Conflict', message: 'Someone else has changed this device. Please refresh and try again.' });
         const updateBody = { ...req.body };
         delete updateBody.ifUpdatedAt;
+        // When status is provided (e.g. agent sync), set last_seen and transition fields like update-status
+        if (updateBody.status) {
+            updateBody.last_seen = new Date();
+            if (updateBody.status === 'offline' || updateBody.status === 'amber') {
+                const current = await Device.findOne({ ip: newIp }).lean();
+                if (current && current.status === 'online') updateBody.lastOnlineAt = current.last_seen || new Date();
+                updateBody.last_issue = new Date();
+                updateBody.upSince = null;
+            } else if (updateBody.status === 'online') {
+                const current = await Device.findOne({ ip: newIp }).lean();
+                if (current && current.status !== 'online') updateBody.upSince = new Date();
+                else if (!current || current.upSince == null) updateBody.upSince = new Date();
+            }
+        }
         await Device.findOneAndUpdate({ ip: newIp }, updateBody, { upsert: true });
         res.json({ message: "Saved" });
     } catch (e) { res.status(500).json({ error: e.message }); }
