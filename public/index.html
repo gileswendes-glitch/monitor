@@ -357,7 +357,7 @@
             </div>
             <div class="card card-firewall" id="card-firewall">
                 <div class="card-header" onclick="openModal('firewall')"><h2>Firewall</h2></div>
-                <div style="text-align: center; padding-bottom: 15px; border-bottom: 1px solid #333; margin-bottom: 10px;">
+                <div id="firewall-latency-row" style="text-align: center; padding-bottom: 15px; border-bottom: 1px solid #333; margin-bottom: 10px;">
                     <span class="big-stat" id="net-ping">--</span><span class="unit" style="display:inline; margin-left:10px;">ms LATENCY</span>
                 </div>
                 <div id="firewall-content"></div>
@@ -423,7 +423,8 @@
                 <div id="map-controls">
                     <div class="map-controls-labels">
                         <label><input type="checkbox" id="map-labels-toggle" onchange="toggleMapLabels();"> Labels</label>
-                        <label><input type="checkbox" id="map-cones-toggle" onchange="toggleMapCones();"> Coverage</label>
+                        <label><input type="checkbox" id="map-cctv-coverage-toggle" onchange="toggleMapCctvCoverage();"> CCTV</label>
+                        <label><input type="checkbox" id="map-wap-coverage-toggle" onchange="toggleMapWapCoverage();"> WAP</label>
                     </div>
                     <div class="map-nav-buttons">
                         <button type="button" class="map-nav-btn" onclick="prevMap()" title="Previous map">⏮</button>
@@ -481,7 +482,9 @@
         function updateBadge() { 
             const b = document.getElementById('conn-badge'); 
             b.innerText = isCloudMode ? "CLOUD VIEW" : "LOCAL VIEW"; 
-            b.className = isCloudMode ? "badge badge-cloud" : "badge badge-local"; 
+            b.className = isCloudMode ? "badge badge-cloud" : "badge badge-local";
+            const lr = document.getElementById('firewall-latency-row');
+            if (lr) lr.style.display = isCloudMode ? 'none' : '';
         }
         function toggleViewMode() { isCloudMode = !isCloudMode; updateBadge(); updateDashboard(); }
         
@@ -836,9 +839,11 @@
         function prevMap(){ currentMapIndex=(currentMapIndex-1+maps.length)%maps.length; loadMap(currentMapIndex); }
         function nextMap(){ currentMapIndex=(currentMapIndex+1)%maps.length; loadMap(currentMapIndex); }
         let mapLabelsVisible = false;
-        let mapConesVisible = false;
+        let mapCctvCoverageVisible = false;
+        let mapWapCoverageVisible = false;
         function toggleMapLabels(){ mapLabelsVisible=!!(document.getElementById('map-labels-toggle')&&document.getElementById('map-labels-toggle').checked); try{ localStorage.setItem('mapLabelsVisible', mapLabelsVisible ? 'true' : 'false'); }catch(e){} plotDevicesOnMap(); }
-        function toggleMapCones(){ mapConesVisible=!!(document.getElementById('map-cones-toggle')&&document.getElementById('map-cones-toggle').checked); try{ localStorage.setItem('mapConesVisible', mapConesVisible ? 'true' : 'false'); }catch(e){} plotDevicesOnMap(); }
+        function toggleMapCctvCoverage(){ mapCctvCoverageVisible=!!(document.getElementById('map-cctv-coverage-toggle')&&document.getElementById('map-cctv-coverage-toggle').checked); try{ localStorage.setItem('mapCctvCoverageVisible', mapCctvCoverageVisible ? 'true' : 'false'); }catch(e){} plotDevicesOnMap(); }
+        function toggleMapWapCoverage(){ mapWapCoverageVisible=!!(document.getElementById('map-wap-coverage-toggle')&&document.getElementById('map-wap-coverage-toggle').checked); try{ localStorage.setItem('mapWapCoverageVisible', mapWapCoverageVisible ? 'true' : 'false'); }catch(e){} plotDevicesOnMap(); }
         function loadMap(i){ 
             currentMapIndex = i;
             devicesLayer.clearLayers();
@@ -980,7 +985,32 @@
 
         // Cluster problem devices by proximity (same area). Returns array of device arrays.
         const FAULT_CLUSTER_RADIUS = 120;
-        const FAULT_MIN_DEVICES = 3;
+        const FAULT_MIN_DEVICES = 2;
+        function getDeviceTooltipHtml(d) {
+            const esc = (s) => (s || '').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            const name = esc(d.name || 'Device');
+            const ip = esc(d.ip || '');
+            const det = safeParseDetails(d.details);
+            const note = (det && det.note) ? String(det.note) : '';
+            const t = getUiType(d);
+            let html = '<div class="device-tt-name">' + name + '</div><div class="device-tt-ip">' + ip + '</div>';
+            if (t === 'printer' && note) {
+                const tr = /([CMYK]):(\w+)%?/g; let m; const ts = {};
+                while ((m = tr.exec(note)) !== null) { ts[m[1]] = m[2] === 'OK' ? 100 : parseInt(m[2], 10); }
+                let cleanNote = note.replace(/([CMYK]):\w+%?/g, '').replace(/\|/g, '').trim();
+                const errorMsg = (cleanNote.length > 2 && !cleanNote.includes('OK')) ? cleanNote : '';
+                if (Object.keys(ts).length > 0) {
+                    const supplyStr = ['C','M','Y','K'].filter(c=>ts[c]!==undefined).map(c=>c+':'+(ts[c]===100?'OK':ts[c]+'%')).join(' ');
+                    html += '<div class="device-tt-extra" style="margin-top:6px;font-size:11px;color:#aaa;">' + esc(supplyStr) + '</div>';
+                }
+                if (errorMsg) html += '<div class="device-tt-warn" style="margin-top:4px;font-size:11px;color:#ffc107;">⚠️ ' + esc(errorMsg) + '</div>';
+            } else if (t === 'wap' || t === 'wifi' || t === 'ap') {
+                const clientsMatch = note.match(/Clients?:\s*(\d+)/i);
+                if (clientsMatch) html += '<div class="device-tt-extra" style="margin-top:6px;font-size:11px;color:#aaa;">' + clientsMatch[1] + ' clients</div>';
+            }
+            return html;
+        }
+
         function clusterProblemDevices(problemDevices) {
             const withPos = problemDevices.map(d => {
                 let x, y;
@@ -1047,7 +1077,8 @@
 
         function plotDevicesOnMap() {
             mapLabelsVisible = !!(document.getElementById('map-labels-toggle') && document.getElementById('map-labels-toggle').checked);
-            mapConesVisible = !!(document.getElementById('map-cones-toggle') && document.getElementById('map-cones-toggle').checked);
+            mapCctvCoverageVisible = !!(document.getElementById('map-cctv-coverage-toggle') && document.getElementById('map-cctv-coverage-toggle').checked);
+            mapWapCoverageVisible = !!(document.getElementById('map-wap-coverage-toggle') && document.getElementById('map-wap-coverage-toggle').checked);
             devicesLayer.clearLayers();
             deviceLabelsLayer.clearLayers();
             cameraConesLayer.clearLayers();
@@ -1132,7 +1163,7 @@
                 }
             });
 
-            // 2. Fault zones (3+ problem devices in same area)
+            // 2. Fault zones (2+ problem devices in same area)
             const clusters = clusterProblemDevices(problemDevices);
             const PAD = 25;
             clusters.forEach(cluster => {
@@ -1197,13 +1228,12 @@
                 
                 const marker = L.marker([y, x], { icon: icon });
                 marker.on('click', () => openDeviceModal(d.ip));
-                const tooltipHtml = '<div class="device-tt-name">' + (d.name || 'Device').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div><div class="device-tt-ip">' + (d.ip || '').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
-                marker.bindTooltip(tooltipHtml, { permanent: false, direction: 'top', className: 'device-marker-tooltip', offset: [0, -12] });
+                marker.bindTooltip(getDeviceTooltipHtml(d), { permanent: false, direction: 'top', className: 'device-marker-tooltip', offset: [0, -12] });
                 marker.addTo(devicesLayer);
             });
 
-            // 3b. Camera coverage cones (when toggle on)
-            if (mapConesVisible) {
+            // 3b. CCTV coverage cones (when toggle on)
+            if (mapCctvCoverageVisible) {
                 try {
                     var b = map.getBounds();
                     if (b && b.getNorthEast && b.getSouthWest) {
@@ -1212,45 +1242,63 @@
                         var coneDist = Math.min(mapH, mapW) * 0.08;
                         if (coneDist > 0) {
                             mapDevices.forEach(d => {
+                                var t = getUiType(d);
+                                if (t !== 'cctv') return;
                                 var mc = d.map_coordinates;
-                                if (!mc || mc.x == null || mc.y == null) return;
+                                if (!mc || mc.x == null || mc.y == null || mc.camera_rotation == null || mc.camera_angle == null) return;
                                 var x = parseFloat(mc.x); var y = parseFloat(mc.y);
                                 if (isNaN(x) || isNaN(y)) return;
-                                var t = getUiType(d);
-                                if (t === 'cctv') {
-                                    if (mc.camera_rotation == null || mc.camera_angle == null) return;
-                                    var rot = Number(mc.camera_rotation) * Math.PI / 180;
-                                    var half = (Number(mc.camera_angle) || 60) * 0.5 * Math.PI / 180;
-                                    var dist = (mc.camera_range != null && !isNaN(Number(mc.camera_range))) ? Number(mc.camera_range) : coneDist;
-                                    var pts = [[y, x]];
-                                    for (var seg = 0; seg <= 20; seg++) {
-                                        var ang = rot - half + (2 * half * seg / 20);
-                                        pts.push([y - dist * Math.sin(ang), x + dist * Math.cos(ang)]);
-                                    }
-                                    var poly = L.polygon(pts, {
-                                        color: d.status === 'online' ? 'rgba(0,210,106,0.5)' : d.status === 'amber' ? 'rgba(255,193,7,0.5)' : 'rgba(248,49,47,0.5)',
-                                        fillColor: d.status === 'online' ? '#00d26a' : d.status === 'amber' ? '#ffc107' : '#f8312f',
-                                        fillOpacity: 0.25, weight: 2
-                                    });
-                                    poly.on('click', function() { openDeviceModal(d.ip); });
-                                    poly.bindTooltip((d.name || d.ip || 'Camera').replace(/</g,'&lt;') + ' (' + (mc.camera_rotation||0) + '° / ' + (mc.camera_angle||60) + '°)', { permanent: false, direction: 'top', className: 'device-marker-tooltip' });
-                                    poly.addTo(cameraConesLayer);
-                                } else if (t === 'wap' || t === 'wifi' || t === 'ap') {
-                                    var markerSize = 30;
-                                    var circleRadius = Math.round(markerSize * 2.5);
-                                    var circle = L.circleMarker([y, x], {
-                                        radius: circleRadius,
-                                        interactive: false,
-                                        color: d.status === 'online' ? 'rgba(0,210,106,0.5)' : d.status === 'amber' ? 'rgba(255,193,7,0.5)' : 'rgba(248,49,47,0.5)',
-                                        fillColor: d.status === 'online' ? '#00d26a' : d.status === 'amber' ? '#ffc107' : '#f8312f',
-                                        fillOpacity: 0.2, weight: 2
-                                    });
-                                    circle.addTo(cameraConesLayer);
+                                var rot = Number(mc.camera_rotation) * Math.PI / 180;
+                                var half = (Number(mc.camera_angle) || 60) * 0.5 * Math.PI / 180;
+                                var dist = (mc.camera_range != null && !isNaN(Number(mc.camera_range))) ? Number(mc.camera_range) : coneDist;
+                                var pts = [[y, x]];
+                                for (var seg = 0; seg <= 20; seg++) {
+                                    var ang = rot - half + (2 * half * seg / 20);
+                                    pts.push([y - dist * Math.sin(ang), x + dist * Math.cos(ang)]);
                                 }
+                                var poly = L.polygon(pts, {
+                                    color: d.status === 'online' ? 'rgba(0,210,106,0.5)' : d.status === 'amber' ? 'rgba(255,193,7,0.5)' : 'rgba(248,49,47,0.5)',
+                                    fillColor: d.status === 'online' ? '#00d26a' : d.status === 'amber' ? '#ffc107' : '#f8312f',
+                                    fillOpacity: 0.25, weight: 2
+                                });
+                                poly.on('click', function() { openDeviceModal(d.ip); });
+                                poly.bindTooltip((d.name || d.ip || 'Camera').replace(/</g,'&lt;') + ' (' + (mc.camera_rotation||0) + '° / ' + (mc.camera_angle||60) + '°)', { permanent: false, direction: 'top', className: 'device-marker-tooltip' });
+                                poly.addTo(cameraConesLayer);
                             });
                         }
                     }
                 } catch (e) { /* cones optional */ }
+            }
+            // 3c. WAP coverage circles (when toggle on)
+            if (mapWapCoverageVisible) {
+                try {
+                    var b = map.getBounds();
+                    if (b && b.getNorthEast && b.getSouthWest) {
+                        var mapH = b.getNorthEast().lat - b.getSouthWest().lat;
+                        var mapW = b.getNorthEast().lng - b.getSouthWest().lng;
+                        var coneDist = Math.min(mapH, mapW) * 0.08;
+                        if (coneDist > 0) {
+                            mapDevices.forEach(d => {
+                                var t = getUiType(d);
+                                if (t !== 'wap' && t !== 'wifi' && t !== 'ap') return;
+                                var mc = d.map_coordinates;
+                                if (!mc || mc.x == null || mc.y == null) return;
+                                var x = parseFloat(mc.x); var y = parseFloat(mc.y);
+                                if (isNaN(x) || isNaN(y)) return;
+                                var markerSize = 30;
+                                var circleRadius = Math.round(markerSize * 2.5);
+                                var circle = L.circleMarker([y, x], {
+                                    radius: circleRadius,
+                                    interactive: false,
+                                    color: d.status === 'online' ? 'rgba(0,210,106,0.5)' : d.status === 'amber' ? 'rgba(255,193,7,0.5)' : 'rgba(248,49,47,0.5)',
+                                    fillColor: d.status === 'online' ? '#00d26a' : d.status === 'amber' ? '#ffc107' : '#f8312f',
+                                    fillOpacity: 0.2, weight: 2
+                                });
+                                circle.addTo(cameraConesLayer);
+                            });
+                        }
+                    }
+                } catch (e) { /* wap coverage optional */ }
             }
 
             // 4. Device name labels: black text on white, fixed pixel offset from marker (tracks close when zooming), centred text.
@@ -1299,7 +1347,7 @@
                 });
             }
         }
-        map.on('zoomend', function() { if (mapLabelsVisible || mapConesVisible) plotDevicesOnMap(); });
+        map.on('zoomend', function() { if (mapLabelsVisible || mapCctvCoverageVisible || mapWapCoverageVisible) plotDevicesOnMap(); });
         function togglePause(){ isPaused=!isPaused; const btn=document.getElementById('pause-btn'); if(btn) btn.innerText=isPaused?"▶":"⏸"; if(!isPaused) updateDashboard(); }
         setInterval(()=>{if(!isPaused)nextMap();},15000);
 
@@ -1504,7 +1552,7 @@
             const ackIps = new Set((acknowledgedIssues || []).map(a => (a.ip || a.deviceIp || '').trim()).filter(Boolean));
             if (t === 'nvr' || t === 'hardware') {
                 const note = (det && det.note) ? String(det.note) : '';
-                const hasError = /Disk\s*\d+\s*(FAIL|Offline)/i.test(note);
+                const hasError = /Disk\s*\d+\s*(FAIL|Offline|Abnormal|SmartFailed)/i.test(note);
                 let totalDrives = parseInt(det.diskCount, 10) || 0;
                 if (totalDrives <= 0) {
                     const dm = note.match(/(\d+)\s*Drives?/i) || note.match(/Cap:\s*[\d.]+\s*TB\s*\|\s*(\d+)/i);
@@ -1666,21 +1714,17 @@
             for (let i = 1; i <= totalDrives; i++) statusByDrive[i] = 'ok';
             if (!note || typeof note !== 'string') return statusByDrive;
             const n = note;
-            // "Disk 3 FAIL", "Disk 2 Offline", "Disk 1 : FAIL"
-            (n.match(/Disk\s*(\d+)\s*(?:FAIL|Offline|Bad|Error)/gi) || []).forEach(s => {
+            // "Disk 3 FAIL", "Disk 2 Offline", "Disk 1 Abnormal", "Disk 4 SmartFailed"
+            (n.match(/Disk\s*(\d+)\s*(?:FAIL|Offline|Abnormal|SmartFailed|Bad|Error)/gi) || []).forEach(s => {
                 const num = parseInt(s.match(/Disk\s*(\d+)/i)?.[1], 10);
                 if (num >= 1) statusByDrive[num] = 'error';
             });
-            (n.match(/Disk\s*(\d+)\s*:\s*(FAIL|Offline|Bad|Error)/gi) || []).forEach(s => {
+            (n.match(/Disk\s*(\d+)\s*:\s*(?:FAIL|Offline|Abnormal|SmartFailed|Bad|Error)/gi) || []).forEach(s => {
                 const num = parseInt(s.match(/Disk\s*(\d+)/i)?.[1], 10);
                 if (num >= 1) statusByDrive[num] = 'error';
             });
-            // "Disk 3: Rebuild", "Disk 2: DEGRADED", "Disk 1 Unformatted"
-            (n.match(/Disk\s*(\d+)[:\s]*(?:Warning|Unformatted|Warn|DEGRADED|Rebuild|Smart)/gi) || []).forEach(s => {
-                const num = parseInt(s.match(/Disk\s*(\d+)/i)?.[1], 10);
-                if (num >= 1 && statusByDrive[num] !== 'error') statusByDrive[num] = 'warning';
-            });
-            (n.match(/Disk\s*(\d+)\s*:\s*(?:Warning|Unformatted|Warn|DEGRADED|Rebuild|Smart)/gi) || []).forEach(s => {
+            // "Disk 3 Rebuilding", "Disk 2 Initializing", "Disk 1 Unformatted", "Disk 4: Rebuild"
+            (n.match(/Disk\s*(\d+)[:\s]*(?:Warning|Unformatted|Warn|DEGRADED|Rebuild|Rebuilding|Initializing|Smart|Status\()/gi) || []).forEach(s => {
                 const num = parseInt(s.match(/Disk\s*(\d+)/i)?.[1], 10);
                 if (num >= 1 && statusByDrive[num] !== 'error') statusByDrive[num] = 'warning';
             });
@@ -2113,7 +2157,7 @@
             }); 
         }
 
-        function buildGenericService(d, st, det) {
+        function buildGenericService(d, st, det, optTitle) {
             let p=[]; 
             const sn = (det.sysName||'').trim();
             if(sn&&sn!==d.name&&sn.toLowerCase()!=='unknown') p.push(det.sysName); 
@@ -2124,8 +2168,9 @@
                     const v = det[k];
                     if(v!=null&&v!==''&&Number(v)!==0) p.push(`${k}: ${det[k]}`);
                 }
-            }); 
-            return `<div class="service-item" onclick="openDeviceModal('${d.ip}')"><div style="display:flex;flex-direction:column;overflow:hidden;flex:1;min-width:0;"><span style="font-weight:600;">${d.name}</span>${p.length?`<div class="service-sub" style="color:#777;">${p.join(' • ')}</div>`:''}</div><div class="status-dot ${st}"></div></div>`;
+            });
+            const titleAttr = optTitle ? ' title="' + String(optTitle).replace(/"/g,'&quot;') + '"' : '';
+            return `<div class="service-item" onclick="openDeviceModal('${d.ip}')"${titleAttr}><div style="display:flex;flex-direction:column;overflow:hidden;flex:1;min-width:0;"><span style="font-weight:600;">${d.name}</span>${p.length?`<div class="service-sub" style="color:#777;">${p.join(' • ')}</div>`:''}</div><div class="status-dot ${st}"></div></div>`;
         }
 
 // --- CCTV NOTE FORMATTER ---
@@ -2200,7 +2245,9 @@ async function updateDashboard(){
                     tonerBars+=`</div>`; 
                 }
                 let statusHtml = errorMsg ? `<div style="font-size:11px; color:#ffffff; margin-top:2px;">⚠️ ${errorMsg}</div>` : "";
-                h.printer += `<div class="service-item" onclick="openDeviceModal('${d.ip}')" style="flex-direction:column;align-items:stretch;padding:10px 0;"><div style="display:flex;justify-content:space-between;align-items:center;"><div style="display:flex;flex-direction:column;"><span style="font-weight:600;">${d.name}</span>${statusHtml}</div><div class="status-dot ${st}"></div></div>${tonerBars}</div>`; c.printer++; 
+                const supplyTitle = Object.keys(ts).length > 0 ? ['C','M','Y','K'].filter(c=>ts[c]!==undefined).map(c=>c+':'+(ts[c]===100?'OK':ts[c]+'%')).join(' ') : 'Toner N/A';
+                const printerTitle = supplyTitle + (errorMsg ? ' | ⚠️ ' + errorMsg.replace(/"/g,'&quot;') : '');
+                h.printer += `<div class="service-item" onclick="openDeviceModal('${d.ip}')" title="${printerTitle.replace(/"/g,'&quot;')}" style="flex-direction:column;align-items:stretch;padding:10px 0;"><div style="display:flex;justify-content:space-between;align-items:center;"><div style="display:flex;flex-direction:column;"><span style="font-weight:600;">${d.name}</span>${statusHtml}</div><div class="status-dot ${st}"></div></div>${tonerBars}</div>`; c.printer++; 
             }
             // --- FIREWALL (CPU/RAM like servers, under latency) ---
             else if(t==='firewall'){ 
@@ -2248,7 +2295,7 @@ async function updateDashboard(){
                     }
                     driveBar = `<div class="stat-container"><div class="stat-row"><span class="stat-label">DISK</span><div class="stat-track" style="display:flex;overflow:hidden;background:#222;">${barSegments}</div></div></div>`;
                 }
-                const hasError = /Disk\s*\d+\s*(FAIL|Offline)/i.test(note);
+                const hasError = /Disk\s*\d+\s*(FAIL|Offline|Abnormal|SmartFailed)/i.test(note);
                 const hasWarning = Object.values(statusByDrive).some(v => v === 'warning') || /drive\(s\)\s*missing|missing\s*drive/i.test(note);
                 if (!ackIps.has((d.ip||'').trim())) { if (hasError) st = 'offline'; else if (hasWarning) st = 'amber'; }
                 const capMatch = note.match(/Cap:\s*([\d.]+)\s*TB/i); const capacity = capMatch ? capMatch[1] + 'TB' : '';
@@ -2316,7 +2363,12 @@ async function updateDashboard(){
             }
 
             else{ 
-                const it=buildGenericService(d,st,det); 
+                let wapTitle = '';
+                if(t==='wap'||t==='wifi'||t==='ap') {
+                    const clientsMatch = (det.note||'').match(/Clients?:\s*(\d+)/i);
+                    wapTitle = (d.ip||'') + (clientsMatch ? ' • ' + clientsMatch[1] + ' clients' : '');
+                }
+                const it=buildGenericService(d,st,det,wapTitle||undefined); 
                 if(t==='wap'){ h.wap+=it; c.wap++; } else if(t==='telephone'){ h.tel+=it; c.tel++; } else if(t==='access_control'){ h.access+=it; c.access++; } else if(t==='service'){ h.cloud+=it; c.cloud++; } else{ h.hw+=it; c.hw++; } 
             } 
         });
@@ -2338,8 +2390,10 @@ async function updateDashboard(){
             try {
                 const chk = document.getElementById('map-labels-toggle');
                 if (chk) { const saved = localStorage.getItem('mapLabelsVisible'); if (saved !== null) { chk.checked = (saved === 'true'); mapLabelsVisible = chk.checked; } }
-                const coneChk = document.getElementById('map-cones-toggle');
-                if (coneChk) { const coneSaved = localStorage.getItem('mapConesVisible'); if (coneSaved !== null) { coneChk.checked = (coneSaved === 'true'); mapConesVisible = coneChk.checked; } }
+                const cctvChk = document.getElementById('map-cctv-coverage-toggle');
+                if (cctvChk) { const saved = localStorage.getItem('mapCctvCoverageVisible'); const legacy = localStorage.getItem('mapConesVisible'); const on = saved !== null ? (saved === 'true') : (legacy === 'true'); cctvChk.checked = on; mapCctvCoverageVisible = on; if (saved === null && legacy !== null) try { localStorage.setItem('mapCctvCoverageVisible', on ? 'true' : 'false'); } catch(e){} }
+                const wapChk = document.getElementById('map-wap-coverage-toggle');
+                if (wapChk) { const saved = localStorage.getItem('mapWapCoverageVisible'); const legacy = localStorage.getItem('mapConesVisible'); const on = saved !== null ? (saved === 'true') : (legacy === 'true'); wapChk.checked = on; mapWapCoverageVisible = on; if (saved === null && legacy !== null) try { localStorage.setItem('mapWapCoverageVisible', on ? 'true' : 'false'); } catch(e){} }
             } catch(e) {}
             Object.entries({'nvr':'nvr-list','cctv':'cctv-list','printer':'printer-window','switch':'switch-window','wap':'wap-list','telephone':'tel-list','access_control':'access-list','hardware':'hardware-list','server':'server-window','service':'cloud-window','esxi':'esxi-list'}).forEach(([t,id])=>{ 
                 const el=document.getElementById(id); if(!el) return; if(hiddenTypes.has(t)){ el.classList.add('minimized'); el.previousElementSibling.querySelector('.toggle-btn')?.classList.add('hidden-active'); } if(expandedTypes.has(t)){ el.classList.add('expanded'); el.previousElementSibling.querySelector('.expand-btn')?.classList.add('expanded-active'); } 
